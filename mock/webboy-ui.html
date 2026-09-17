@@ -1,0 +1,1213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebBoy — Instrument UI mock</title>
+    <!--
+      DESIGN MOCK — not wired to the emulator. See mock/README.md for the rationale.
+
+      Offline at runtime: the faces are vendored in mock/fonts/ (SIL OFL 1.1, licences
+      alongside them). No CDN, no network request when this page opens.
+
+      Theme is three-state: no data-theme attribute follows the OS; data-theme="light" or
+      "dark" overrides it. The dark token block therefore appears twice — CSS cannot share
+      one declaration list between a media query and an attribute selector.
+    -->
+    <style>
+      /* ============================================================================
+         FACES — vendored, latin subset only.
+         Archivo: a grotesque with tight apertures that survives 10px uppercase.
+         IBM Plex Mono: every number and every hardware value.
+         ========================================================================== */
+      @font-face {
+        font-family: 'Archivo';
+        src: url('fonts/archivo-latin-var.woff2') format('woff2-variations');
+        font-weight: 400 800;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Plex Mono';
+        src: url('fonts/plexmono-latin-400.woff2') format('woff2');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Plex Mono';
+        src: url('fonts/plexmono-latin-500.woff2') format('woff2');
+        font-weight: 500;
+        font-display: swap;
+      }
+
+      /* ============================================================================
+         TOKENS — LIGHT
+         ========================================================================== */
+      :root {
+        --paper: #e8e4d9;
+
+        --ink: #1b1a17;
+        --ink-2: #57534a;
+        --ink-3: #655f54;
+
+        --rule: #c9c3b3;
+        --rule-strong: #a8a191;
+
+        --signal: #c23b13;
+        --signal-text: #b53610;
+        --signal-ink: #fff8f3;
+
+        /* No borders and no offset shadows anywhere: a control is a filled surface, and
+           pressing it goes DARKER, because pressing pushes in. */
+        --key-face: #dcd7c9;
+        --key-hover: #d2ccbb;
+        --press-face: #1b1a17;
+        --press-ink: #f3f0e8;
+
+        /* The device body is the only filled box left on the page. */
+        --shell: #2a2721;
+        --shell-lip: rgb(255 255 255 / 0.07);
+        --on-shell: #cfc9b8;
+        --on-shell-dim: #a29b8a;
+        --shell-key: #45403a;
+        --shell-key-hover: #524c44;
+        --lamp-off: #4a463c;
+
+        /* The LCD well is a recess, so it stays dark in BOTH themes. */
+        --well-a: #17150f;
+        --well-b: #201d16;
+        --lcd-off: #7d8f3a;
+
+        --ui: 'Archivo', ui-sans-serif, system-ui, 'Helvetica Neue', Arial, sans-serif;
+        --mono: 'Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      /* ============================================================================
+         TOKENS — DARK ("Stone", warm charcoal, not midnight)
+         ========================================================================== */
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --paper: #2e2b26;
+          --ink: #eae6db;
+          --ink-2: #b5ae9f;
+          --ink-3: #9d9689;
+          --rule: #45403a;
+          --rule-strong: #5a5349;
+          --signal: #d2673a;
+          --signal-text: #dd7a4e;
+          --signal-ink: #1b120c;
+          --key-face: #3e3a32;
+          --key-hover: #4a453c;
+          --press-face: #14120f;
+          --press-ink: #eae6db;
+          --shell: #8e887c;
+          --shell-lip: rgb(255 255 255 / 0.22);
+          --on-shell: #23201b;
+          --on-shell-dim: #23201b;
+          --shell-key: #a39c8d;
+          --shell-key-hover: #afa89a;
+          --lamp-off: #6f695e;
+          --lcd-off: #6d7c33;
+        }
+      }
+
+      :root[data-theme='dark'] {
+        --paper: #2e2b26;
+        --ink: #eae6db;
+        --ink-2: #b5ae9f;
+        --ink-3: #9d9689;
+        --rule: #45403a;
+        --rule-strong: #5a5349;
+        --signal: #d2673a;
+        --signal-text: #dd7a4e;
+        --signal-ink: #1b120c;
+        --key-face: #3e3a32;
+        --key-hover: #4a453c;
+        --press-face: #14120f;
+        --press-ink: #eae6db;
+        --shell: #8e887c;
+        --shell-lip: rgb(255 255 255 / 0.22);
+        --on-shell: #23201b;
+        --on-shell-dim: #23201b;
+        --shell-key: #a39c8d;
+        --shell-key-hover: #afa89a;
+        --lamp-off: #6f695e;
+        --lcd-off: #6d7c33;
+      }
+
+      /* ============================================================================
+         BASE
+         ========================================================================== */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--ui);
+        font-size: 15px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+      :focus-visible {
+        outline: 2px solid var(--signal);
+        outline-offset: 3px;
+      }
+
+      /* ============================================================================
+         TYPE
+         ========================================================================== */
+      .micro {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .mono {
+        font-family: var(--mono);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding-inline: 24px;
+      }
+      /* One rule, reused. It is the only line in the file — there are no enclosing
+         outlines anywhere except the device body. */
+      .rule {
+        border: 0;
+        border-top: 1px solid var(--rule);
+        margin: 0;
+      }
+
+      /* ============================================================================
+         MASTHEAD
+         ========================================================================== */
+      .masthead .wrap {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding-block: 18px 16px;
+        flex-wrap: wrap;
+      }
+      .wordmark {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.015em;
+      }
+      .wordmark .rev {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 400;
+        letter-spacing: 0.08em;
+        color: var(--ink-3);
+      }
+      /* The privacy claim is the product's whole thesis. Underlined in signal, not
+         boxed — the emphasis survives, the box does not. */
+      .claim {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ink-2);
+        padding-bottom: 3px;
+        border-bottom: 2px solid var(--signal);
+      }
+      .claim svg {
+        display: block;
+        flex: none;
+        color: var(--signal);
+      }
+      .spacer {
+        flex: 1 1 auto;
+      }
+      .ctl {
+        padding: 5px 0;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        border-bottom: 1px solid transparent;
+      }
+      .ctl:hover {
+        color: var(--ink);
+        border-bottom-color: var(--ink-3);
+      }
+
+      /* ============================================================================
+         STAGE — the device, centred, and the largest object on the page.
+         ========================================================================== */
+      .stage {
+        padding-block: 40px 34px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+      }
+      .device {
+        width: 100%;
+        max-width: 620px;
+      }
+
+      /* One continuous piece of plastic holding the screen AND the pad. Split them and
+         the device reads as two unrelated slabs the moment the shell inverts. */
+      .body {
+        background: var(--shell);
+        border-radius: 4px;
+        padding: 20px 22px 26px;
+        border-top: 1px solid var(--shell-lip);
+      }
+      .plate {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .plate .micro {
+        color: var(--on-shell-dim);
+      }
+      .plate .name {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--on-shell);
+        margin-left: auto;
+        max-width: 55%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .lamp {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--lamp-off);
+        flex: none;
+      }
+      .is-running .lamp {
+        background: var(--signal);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 25%, transparent);
+      }
+
+      /* The only gradient in the file, and it is doing a job: a moulded plastic lip. */
+      .well {
+        background: linear-gradient(180deg, var(--well-a) 0%, var(--well-b) 100%);
+        border-radius: 3px;
+        padding: 14px;
+        box-shadow:
+          inset 0 2px 4px rgb(0 0 0 / 0.55),
+          0 1px 0 var(--shell-lip);
+      }
+      .screen {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 160 / 144;
+        image-rendering: pixelated;
+        background: var(--lcd-off);
+        border-radius: 1px;
+      }
+
+      /* --- Pad, on the plastic ------------------------------------------------- */
+      .pad-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        margin-top: 26px;
+      }
+      .dpad {
+        display: grid;
+        grid-template-columns: repeat(3, 42px);
+        grid-template-rows: repeat(3, 42px);
+        gap: 2px;
+      }
+      .dpad button,
+      .round,
+      .pill {
+        background: var(--shell-key);
+        color: var(--on-shell);
+        border-radius: 3px;
+      }
+      .dpad button:hover,
+      .round:hover,
+      .pill:hover {
+        background: var(--shell-key-hover);
+      }
+      .dpad button {
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+      }
+      .dpad .hub {
+        background: var(--shell-key);
+        border-radius: 3px;
+      }
+      .dpad .blank {
+        background: none;
+      }
+      .ab {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+      }
+      .round {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .startsel {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 20px;
+      }
+      .pill {
+        border-radius: 20px;
+        padding: 6px 18px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .dpad button:active,
+      .round:active,
+      .pill:active {
+        background: color-mix(in srgb, var(--shell) 55%, #000);
+      }
+
+      /* --- Transport: software, so it stays OFF the plastic --------------------- */
+      .transport {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .key {
+        background: var(--key-face);
+        color: var(--ink);
+        border-radius: 3px;
+        padding: 9px 15px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .key:hover {
+        background: var(--key-hover);
+      }
+      .key:active {
+        background: var(--press-face);
+        color: var(--press-ink);
+      }
+      .key[data-variant='signal'] {
+        background: var(--signal);
+        color: var(--signal-ink);
+      }
+      .key[data-variant='signal']:hover {
+        background: color-mix(in srgb, var(--signal) 88%, #000);
+      }
+
+      /* --- Readout strip: no box, no dividers, just columns --------------------- */
+      .readout {
+        width: 100%;
+        max-width: 620px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin: 0;
+      }
+      .readout dt {
+        margin-bottom: 4px;
+      }
+      .readout dd {
+        margin: 0;
+        font-family: var(--mono);
+        font-variant-numeric: tabular-nums;
+        font-size: 20px;
+        font-weight: 400;
+        letter-spacing: -0.01em;
+      }
+      .readout dd small {
+        font-size: 11px;
+        color: var(--ink-3);
+        margin-left: 3px;
+      }
+
+      /* --- Empty state ---------------------------------------------------------- */
+      .dropzone {
+        width: 100%;
+        max-width: 620px;
+        text-align: center;
+        padding-block: 64px;
+      }
+      .dropzone h2 {
+        margin: 0 0 8px;
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .dropzone p {
+        margin: 0 auto 22px;
+        max-width: 42ch;
+        color: var(--ink-2);
+        font-size: 14px;
+      }
+      .dropzone .hint {
+        margin: 20px 0 0;
+        font-size: 11.5px;
+        color: var(--ink-3);
+      }
+
+      /* ============================================================================
+         PANELS — full width beneath the stage. The extra width buys COLUMNS, which is
+         the whole reason to move them down here.
+         ========================================================================== */
+      .tabs {
+        display: flex;
+        gap: 26px;
+        padding-block: 14px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar {
+        display: none;
+      }
+      .tab {
+        padding: 0 0 4px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        border-bottom: 2px solid transparent;
+        white-space: nowrap;
+      }
+      .tab:hover {
+        color: var(--ink-2);
+      }
+      .tab[aria-selected='true'] {
+        color: var(--ink);
+        border-bottom-color: var(--signal);
+      }
+
+      .panel {
+        padding-block: 26px 44px;
+      }
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+        gap: 0 52px;
+      }
+
+      /* Label left, value right in mono, hairline between. No box. */
+      .spec {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: baseline;
+        margin: 0;
+        font-size: 13.5px;
+        border-bottom: 1px solid var(--rule);
+        padding-block: 9px;
+      }
+      .spec dt {
+        color: var(--ink-2);
+      }
+      .spec .lead {
+        border-bottom: 1px dotted var(--rule-strong);
+        margin: 0 10px 4px;
+        min-width: 14px;
+      }
+      .spec dd {
+        margin: 0;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .spec dd.bad {
+        color: var(--signal-text);
+      }
+
+      .bind {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 13.5px;
+        border-bottom: 1px solid var(--rule);
+        padding-block: 9px;
+      }
+      .bind span:last-child {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+
+      .slot {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding-block: 12px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .slot .idx {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-3);
+        width: 40px;
+        flex: none;
+      }
+      .slot .meta {
+        min-width: 0;
+        flex: 1;
+      }
+      .slot .meta b {
+        display: block;
+        font-size: 13.5px;
+        font-weight: 600;
+      }
+      .slot .meta span {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-3);
+      }
+      .slot.free .meta b {
+        color: var(--ink-3);
+        font-weight: 400;
+        font-style: italic;
+      }
+      .mini {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        padding-bottom: 2px;
+        border-bottom: 1px solid var(--rule-strong);
+      }
+      .mini:hover {
+        color: var(--ink);
+        border-bottom-color: var(--ink);
+      }
+
+      .regs,
+      .disasm {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.9;
+      }
+      .regs .k {
+        color: var(--ink-3);
+      }
+      .regs .f {
+        color: var(--signal-text);
+      }
+      .disasm div {
+        display: flex;
+        gap: 16px;
+        white-space: nowrap;
+      }
+      .disasm .addr {
+        color: var(--ink-3);
+      }
+      .disasm .cur span {
+        color: var(--signal-text);
+      }
+      .note {
+        font-size: 12.5px;
+        color: var(--ink-2);
+        margin: 18px 0 0;
+        max-width: 58ch;
+      }
+      h3.sub {
+        margin: 0 0 8px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+
+      /* ============================================================================
+         FOOTER + SPEC SHEET
+         ========================================================================== */
+      .foot .wrap {
+        padding-block: 22px 40px;
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        font-size: 11.5px;
+        color: var(--ink-3);
+        line-height: 1.6;
+      }
+      .foot p {
+        margin: 0;
+        max-width: 62ch;
+      }
+
+      .sheet .wrap {
+        padding-block: 36px 52px;
+      }
+      .sheet h2 {
+        margin: 0 0 6px;
+        font-size: 16px;
+        font-weight: 700;
+      }
+      .sheet > .wrap > p {
+        margin: 0 0 26px;
+        max-width: 68ch;
+        font-size: 13.5px;
+        color: var(--ink-2);
+      }
+      .sheet h4 {
+        margin: 0 0 10px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        margin-bottom: 26px;
+      }
+      .sw {
+        width: 118px;
+      }
+      .sw i {
+        display: block;
+        height: 44px;
+      }
+      .sw span {
+        display: block;
+        padding-top: 6px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--ink-3);
+      }
+      .rules-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 20px 40px;
+        margin: 28px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .rules-list li {
+        font-size: 13px;
+        color: var(--ink-2);
+        border-top: 1px solid var(--rule);
+        padding-top: 11px;
+      }
+      .rules-list b {
+        display: block;
+        color: var(--ink);
+        font-size: 12.5px;
+        margin-bottom: 4px;
+      }
+      .rules-list .no {
+        color: var(--signal-text);
+      }
+
+      @media (max-width: 560px) {
+        .pad-row {
+          flex-direction: column;
+          gap: 26px;
+        }
+        .readout {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="wrap">
+        <h1 class="wordmark"><span>WEBBOY</span> <span class="rev">DMG · CGB · AGB</span></h1>
+
+        <span class="claim">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            aria-hidden="true"
+          >
+            <path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Z" />
+          </svg>
+          Your ROM never leaves this device
+        </span>
+
+        <span class="spacer"></span>
+
+        <button class="ctl" id="stateToggle" type="button">View: loaded</button>
+        <button class="ctl" id="themeToggle" type="button">Dark</button>
+      </div>
+    </header>
+    <hr class="rule" />
+
+    <!-- ========================= STAGE ========================= -->
+    <div class="wrap">
+      <section class="stage is-running" id="device" aria-label="Emulator">
+        <div class="device" id="viewLoaded">
+          <div class="body">
+            <div class="plate">
+              <span class="lamp" aria-hidden="true"></span>
+              <span class="micro">Running</span>
+              <span class="name">tellinglys.gb</span>
+            </div>
+
+            <div class="well">
+              <canvas
+                class="screen"
+                id="lcd"
+                width="160"
+                height="144"
+                aria-label="Game screen"
+              ></canvas>
+            </div>
+
+            <div class="pad-row">
+              <div class="dpad" role="group" aria-label="Direction pad">
+                <span class="blank"></span>
+                <button type="button" aria-label="Up">▲</button>
+                <span class="blank"></span>
+                <button type="button" aria-label="Left">◀</button>
+                <span class="hub"></span>
+                <button type="button" aria-label="Right">▶</button>
+                <span class="blank"></span>
+                <button type="button" aria-label="Down">▼</button>
+                <span class="blank"></span>
+              </div>
+
+              <div>
+                <div class="ab">
+                  <button class="round" type="button">B</button>
+                  <button class="round" type="button">A</button>
+                </div>
+                <div class="startsel">
+                  <button class="pill" type="button">Select</button>
+                  <button class="pill" type="button">Start</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dropzone" id="viewEmpty" hidden>
+          <h2>Insert a cartridge</h2>
+          <p>
+            Drop a <code>.gb</code>, <code>.gbc</code> or <code>.gba</code> file here, or choose one
+            from your device.
+          </p>
+          <button class="key" data-variant="signal" type="button">Choose file…</button>
+          <p class="hint">Read in your browser. No upload, no server, no copy kept.</p>
+        </div>
+
+        <div class="transport" role="group" aria-label="Transport">
+          <button class="key" data-variant="signal" type="button">Pause</button>
+          <button class="key" type="button">Reset</button>
+          <button class="key" type="button">Mute</button>
+          <button class="key" type="button">Fullscreen</button>
+          <button class="key" type="button">Eject</button>
+        </div>
+
+        <dl class="readout">
+          <div>
+            <dt class="micro">Frames / s</dt>
+            <dd id="fps">59.7</dd>
+          </div>
+          <div>
+            <dt class="micro">Frames</dt>
+            <dd id="frames">184,302</dd>
+          </div>
+          <div>
+            <dt class="micro">Target</dt>
+            <dd>59.73<small>Hz</small></dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+    <hr class="rule" />
+
+    <!-- ========================= PANELS ========================= -->
+    <div class="wrap">
+      <div class="tabs" role="tablist" aria-label="Panels">
+        <button class="tab" role="tab" aria-selected="true" data-p="cart" type="button">
+          Cartridge
+        </button>
+        <button class="tab" role="tab" aria-selected="false" data-p="ctrl" type="button">
+          Controls
+        </button>
+        <button class="tab" role="tab" aria-selected="false" data-p="saves" type="button">
+          Saves
+        </button>
+        <button class="tab" role="tab" aria-selected="false" data-p="states" type="button">
+          States
+        </button>
+        <button class="tab" role="tab" aria-selected="false" data-p="debug" type="button">
+          Debug
+        </button>
+      </div>
+      <hr class="rule" />
+
+      <div class="panel" data-panel="cart" role="tabpanel">
+        <div class="cols">
+          <dl class="spec">
+            <dt>Title</dt>
+            <i class="lead"></i>
+            <dd>TELLINGLYS</dd>
+          </dl>
+          <dl class="spec">
+            <dt>ROM</dt>
+            <i class="lead"></i>
+            <dd>64 KB</dd>
+          </dl>
+          <dl class="spec">
+            <dt>System</dt>
+            <i class="lead"></i>
+            <dd>Game Boy</dd>
+          </dl>
+          <dl class="spec">
+            <dt>RAM</dt>
+            <i class="lead"></i>
+            <dd>8 KB</dd>
+          </dl>
+          <dl class="spec">
+            <dt>Mapper</dt>
+            <i class="lead"></i>
+            <dd>MBC1+RAM+BATTERY</dd>
+          </dl>
+          <dl class="spec">
+            <dt>Header checksum</dt>
+            <i class="lead"></i>
+            <dd>valid</dd>
+          </dl>
+          <dl class="spec">
+            <dt>Destination</dt>
+            <i class="lead"></i>
+            <dd>non-Japanese</dd>
+          </dl>
+          <dl class="spec">
+            <dt>Global checksum</dt>
+            <i class="lead"></i>
+            <dd class="bad">mismatch</dd>
+          </dl>
+        </div>
+        <p class="note">
+          A global checksum mismatch is normal for homebrew and patched ROMs — real hardware never
+          checks it.
+        </p>
+      </div>
+
+      <div class="panel" data-panel="ctrl" role="tabpanel" hidden>
+        <div class="cols">
+          <div class="bind"><span>Up</span><span>Arrow Up</span></div>
+          <div class="bind"><span>A</span><span>X</span></div>
+          <div class="bind"><span>Down</span><span>Arrow Down</span></div>
+          <div class="bind"><span>B</span><span>Z</span></div>
+          <div class="bind"><span>Left</span><span>Arrow Left</span></div>
+          <div class="bind"><span>Start</span><span>Enter</span></div>
+          <div class="bind"><span>Right</span><span>Arrow Right</span></div>
+          <div class="bind"><span>Select</span><span>Shift</span></div>
+        </div>
+        <p class="note">A connected gamepad is picked up automatically.</p>
+      </div>
+
+      <div class="panel" data-panel="saves" role="tabpanel" hidden>
+        <h3 class="sub">Battery save</h3>
+        <div class="slot">
+          <span class="idx">SRAM</span>
+          <span class="meta">
+            <b>8 KB · restored on load</b>
+            <span>written 2 min ago</span>
+          </span>
+          <button class="mini" type="button">Export</button>
+        </div>
+        <p class="note">
+          Stored in this browser only, keyed to the cartridge. Clearing site data deletes it —
+          export first if it matters.
+        </p>
+      </div>
+
+      <div class="panel" data-panel="states" role="tabpanel" hidden>
+        <h3 class="sub">Save states</h3>
+        <div class="slot">
+          <span class="idx">01</span>
+          <span class="meta"><b>Cave entrance</b><span>14:22 · 2.1 MB</span></span>
+          <button class="mini" type="button">Load</button>
+        </div>
+        <div class="slot">
+          <span class="idx">02</span>
+          <span class="meta"><b>Before boss</b><span>13:07 · 2.1 MB</span></span>
+          <button class="mini" type="button">Load</button>
+        </div>
+        <div class="slot free">
+          <span class="idx">03</span>
+          <span class="meta"><b>empty</b><span>—</span></span>
+          <button class="mini" type="button">Save</button>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="debug" role="tabpanel" hidden>
+        <div class="cols">
+          <div>
+            <h3 class="sub">Registers</h3>
+            <div class="regs">
+              <span class="k">AF</span> 01B0 <span class="k">BC</span> 0013<br />
+              <span class="k">DE</span> 00D8 <span class="k">HL</span> 014D<br />
+              <span class="k">SP</span> FFFE <span class="k">PC</span> 0100<br />
+              <span class="k">IME</span> <span class="f">1</span> <span class="k">F</span>
+              <span class="f">Z-HC</span><br />
+              <span class="k">LY</span> 0090 <span class="k">STAT</span> 00C4<br />
+              <span class="k">DIV</span> 1A <span class="k">cyc</span> 4,194,304
+            </div>
+          </div>
+          <div>
+            <h3 class="sub">Disassembly</h3>
+            <div class="disasm">
+              <div><span class="addr">0100</span><span>NOP</span></div>
+              <div class="cur"><span class="addr">0101</span><span>JP $0150</span></div>
+              <div><span class="addr">0104</span><span>LD SP, $FFFE</span></div>
+              <div><span class="addr">0107</span><span>XOR A</span></div>
+              <div><span class="addr">0108</span><span>LD HL, $9FFF</span></div>
+              <div><span class="addr">010B</span><span>LD (HL-), A</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="transport" style="justify-content: flex-start; margin-top: 24px">
+          <button class="key" type="button">Step</button>
+          <button class="key" type="button">Frame</button>
+          <button class="key" type="button">Break</button>
+        </div>
+      </div>
+    </div>
+
+    <hr class="rule" />
+    <footer class="foot">
+      <div class="wrap">
+        <p>
+          WebBoy is an independent emulator. Not affiliated with or endorsed by Nintendo. “Game Boy”
+          is a trademark of its respective owner. Supply your own legally obtained software.
+        </p>
+        <p class="mono">v0.1.0 · 920 tests · sm83 500,000/500,000</p>
+      </div>
+    </footer>
+
+    <hr class="rule" />
+    <section class="sheet">
+      <div class="wrap">
+        <h2>Design direction — “instrument, not dashboard”</h2>
+        <p>
+          The product <em>is</em> a device. The shipped UI is a web dashboard that happens to
+          contain one. Here the device is the only filled surface on the page, and everything else
+          is air, hairlines and tabular data.
+        </p>
+
+        <h4>Light</h4>
+        <div class="swatches">
+          <div class="sw"><i style="background: #e8e4d9"></i><span>paper E8E4D9</span></div>
+          <div class="sw"><i style="background: #dcd7c9"></i><span>sunk DCD7C9</span></div>
+          <div class="sw"><i style="background: #1b1a17"></i><span>ink 1B1A17</span></div>
+          <div class="sw"><i style="background: #c9c3b3"></i><span>rule C9C3B3</span></div>
+          <div class="sw"><i style="background: #c23b13"></i><span>signal C23B13</span></div>
+          <div class="sw"><i style="background: #2a2721"></i><span>shell 2A2721</span></div>
+        </div>
+
+        <h4>Dark — “Stone”, warm charcoal, not midnight</h4>
+        <div class="swatches">
+          <div class="sw"><i style="background: #2e2b26"></i><span>paper 2E2B26</span></div>
+          <div class="sw"><i style="background: #23201b"></i><span>sunk 23201B</span></div>
+          <div class="sw"><i style="background: #eae6db"></i><span>ink EAE6DB</span></div>
+          <div class="sw"><i style="background: #45403a"></i><span>rule 45403A</span></div>
+          <div class="sw"><i style="background: #d2673a"></i><span>signal D2673A</span></div>
+          <div class="sw"><i style="background: #8e887c"></i><span>shell 8E887C</span></div>
+          <div class="sw"><i style="background: #9bbc0f"></i><span>lcd 9BBC0F</span></div>
+        </div>
+
+        <ul class="rules-list">
+          <li>
+            <b>Archivo, not the system stack</b>
+            System fonts render SF Pro on macOS — the most generic face available, and the “no
+            decision” decision. Archivo is a grotesque with tight apertures that survives 10px
+            uppercase. Vendored locally, so runtime network calls stay at zero.
+          </li>
+          <li>
+            <b>The device is the only box</b>
+            Every other border is gone. That single filled surface is what makes the screen read as
+            the hero — no inflation required.
+          </li>
+          <li>
+            <b>One rule, reused</b>
+            A 1px horizontal divider is the only line in the file. No enclosing outlines, no
+            internal grid dividers, no bordered inputs. <span class="no">No card shadows.</span>
+          </li>
+          <li>
+            <b>Controls are surfaces, not outlines</b>
+            A filled plate with no border and no offset shadow. Pressing goes darker, because
+            pressing pushes in. <span class="no">No neo-brutalist offset.</span>
+          </li>
+          <li>
+            <b>Panels moved below to buy columns</b>
+            Full width is only worth taking if it buys something. Cartridge specs and key bindings
+            become two or three columns instead of one long list.
+          </li>
+          <li>
+            <b>Dark is Stone, not midnight</b>
+            #2E2B26 has headroom in both directions — plates raise, wells recess. Near-black gives
+            you one direction only.
+          </li>
+          <li>
+            <b>The shell inverts, the well does not</b>
+            Dark mode turns the body to grey plastic #8E887C, what a real DMG was. The LCD well
+            stays dark in both, because a recess is a recess.
+          </li>
+          <li>
+            <b>Clay, not hotter vermilion</b>
+            #D2673A at 61% saturation. Saturated warm on mid-grey shimmers on thin rules and gets
+            tiring over an hour.
+          </li>
+          <li>
+            <b>Every number is Plex Mono, tabular</b>
+            A changing FPS readout never reflows its neighbours.
+          </li>
+          <li>
+            <b>The claim is underlined, not boxed</b>
+            The emphasis survives the removal of every box; the badge does not.
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <script>
+      /* ---- theme: follow the OS until the user says otherwise ---------------- */
+      const root = document.documentElement;
+      const themeBtn = document.getElementById('themeToggle');
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+      const effective = () =>
+        root.getAttribute('data-theme') ?? (systemDark.matches ? 'dark' : 'light');
+      const syncLabel = () => {
+        themeBtn.textContent = effective() === 'dark' ? 'Light' : 'Dark';
+      };
+      themeBtn.addEventListener('click', () => {
+        root.setAttribute('data-theme', effective() === 'dark' ? 'light' : 'dark');
+        syncLabel();
+      });
+      systemDark.addEventListener('change', () => {
+        if (!root.hasAttribute('data-theme')) syncLabel();
+      });
+      syncLabel();
+
+      /* ---- loaded / empty ---------------------------------------------------- */
+      const stateBtn = document.getElementById('stateToggle');
+      const loaded = document.getElementById('viewLoaded');
+      const empty = document.getElementById('viewEmpty');
+      const device = document.getElementById('device');
+      stateBtn.addEventListener('click', () => {
+        const showEmpty = loaded.hidden;
+        loaded.hidden = !showEmpty;
+        empty.hidden = showEmpty;
+        device.classList.toggle('is-running', showEmpty);
+        stateBtn.textContent = showEmpty ? 'View: loaded' : 'View: empty';
+      });
+
+      /* ---- tabs -------------------------------------------------------------- */
+      const tabs = [...document.querySelectorAll('.tab')];
+      tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+          document.querySelectorAll('[data-panel]').forEach((p) => {
+            p.hidden = p.dataset.panel !== tab.dataset.p;
+          });
+        });
+      });
+
+      /* ---- fake LCD ----------------------------------------------------------
+         An abstract test pattern in the four DMG shades. Deliberately NOT a real game
+         frame: no commercial artwork goes in this repository.
+      ---------------------------------------------------------------------- */
+      const SHADES = ['#9bbc0f', '#8bac0f', '#306230', '#0f380f'];
+      const ctx = document.getElementById('lcd').getContext('2d');
+      let t = 0;
+
+      function draw() {
+        ctx.fillStyle = SHADES[0];
+        ctx.fillRect(0, 0, 160, 144);
+
+        for (let x = 0; x < 160; x += 8) {
+          for (let y = 104; y < 144; y += 8) {
+            const n = ((x >> 3) + (y >> 3) + (t >> 3)) % 4;
+            ctx.fillStyle = SHADES[n === 0 ? 1 : n === 1 ? 2 : 1];
+            ctx.fillRect(x, y, 8, 8);
+            ctx.fillStyle = SHADES[3];
+            ctx.fillRect(x, y, 8, 1);
+          }
+        }
+
+        ctx.fillStyle = SHADES[1];
+        for (let i = 0; i < 12; i++) {
+          const w = 14 + ((i * 7) % 18);
+          const h = 20 + ((i * 13) % 34);
+          const x = ((i * 26 - (t >> 1)) % 200) - 20;
+          ctx.fillRect(x, 104 - h, w, h);
+        }
+
+        const by = 88 + Math.round(Math.sin(t / 9) * 3);
+        ctx.fillStyle = SHADES[3];
+        ctx.fillRect(72, by, 16, 16);
+        ctx.fillStyle = SHADES[0];
+        ctx.fillRect(76, by + 4, 3, 3);
+        ctx.fillRect(83, by + 4, 3, 3);
+        ctx.fillStyle = SHADES[2];
+        ctx.fillRect(75, by + 10, 10, 2);
+
+        ctx.fillStyle = SHADES[3];
+        ctx.fillRect(0, 0, 160, 14);
+        ctx.fillStyle = SHADES[0];
+        for (let i = 0; i < 6; i++) ctx.fillRect(6 + i * 7, 5, 4, 4);
+      }
+
+      let last = 0;
+      function loop(now) {
+        if (now - last > 66) {
+          t += 2;
+          draw();
+          last = now;
+          document.getElementById('fps').textContent = (59.4 + Math.random() * 0.5).toFixed(1);
+        }
+        requestAnimationFrame(loop);
+      }
+      draw();
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>
