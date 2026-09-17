@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-17T08:06:19.610Z",
+  "generatedAt": "2026-09-17T11:33:47.503Z",
   "entries": [
     {
       "suite": "blargg/cpu_instrs",
@@ -376,14 +376,14 @@
     {
       "suite": "mooneye/acceptance",
       "test": "intr_2_0_timing",
-      "outcome": "fail",
-      "detail": "Registers all 0x42 — test ROM reported failure."
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
     },
     {
       "suite": "mooneye/acceptance",
       "test": "intr_2_mode0_timing",
-      "outcome": "fail",
-      "detail": "Registers all 0x42 — test ROM reported failure."
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
     },
     {
       "suite": "mooneye/acceptance",
@@ -400,8 +400,8 @@
     {
       "suite": "mooneye/acceptance",
       "test": "intr_2_oam_ok_timing",
-      "outcome": "fail",
-      "detail": "Registers all 0x42 — test ROM reported failure."
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
     },
     {
       "suite": "mooneye/acceptance",
@@ -1077,8 +1077,8 @@
     }
   ],
   "totals": {
-    "pass": 119,
-    "fail": 14,
+    "pass": 122,
+    "fail": 11,
     "timeout": 0,
     "unavailable": 0,
     "screenshot": 34,

@@ -13,8 +13,8 @@ Every phase has a **hard exit gate** — a test result, not an opinion. `emu-acc
 | 00 | [Foundation](phase-00-foundation.md) | `webboy-frontend-engineer` | ✅ **Done** — builds, harness runs, CI green |
 | 01 | [SM83 CPU](phase-01-cpu.md) | `gb-cpu-engineer` | ✅ **Done** — sm83 500,000/500,000 (100%) |
 | 02 | [Memory & Cartridge](phase-02-memory-cartridge.md) | `gb-memory-engineer` | ✅ **Done** — `cpu_instrs` 11/11, MBC1 13/13 |
-| 03 | [Timing & Interrupts](phase-03-timing-interrupts.md) | `gb-cpu-engineer` | ✅ **Done** — timer 13/13; Mooneye 57/66 applicable |
-| 04 | [PPU & Display](phase-04-ppu.md) | `gb-ppu-engineer` | ✅ **Done** — dmg-acid2 pixel-exact; OAM DMA + STAT latch exact |
+| 03 | [Timing & Interrupts](phase-03-timing-interrupts.md) | `gb-cpu-engineer` | ✅ **Done** — timer 13/13; Mooneye 60/66 applicable |
+| 04 | [PPU & Display](phase-04-ppu.md) | `gb-ppu-engineer` | ✅ **Done** — dmg-acid2 exact; mode 3 = 172 dots exact |
 | 05 | [Input → First Playable](phase-05-input-first-playable.md) | `gb-audio-io-engineer` | ✅ **🏁 M3** — homebrew runs + responds to input |
 | 06 | [Mappers & Persistence](phase-06-persistence-mappers.md) | `gb-memory-engineer` | ✅ **Done** — every Mooneye mapper test passes |
 | 07 | [Audio](phase-07-audio.md) | `gb-audio-io-engineer` | ⚠️ **Not met** — `dmg_sound` 9/12 (wave-RAM window) |

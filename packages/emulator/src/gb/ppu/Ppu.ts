@@ -397,6 +397,28 @@ export class Ppu {
   /* ----------------------------- background fetcher ------------------------ */
 
   private stepFetcher(): void {
+    // Pandocs: the first four steps take 2 dots each, and the PUSH is attempted EVERY dot
+    // until it succeeds. Retrying it only every other dot adds a stall dot at each tile
+    // boundary, which is what pushed mode 3 past its 172-dot minimum.
+    if (this.fetcherState === FETCH_PUSH) {
+      // Push ONLY into an empty FIFO. Pushing while pixels from the previous tile remain
+      // leaves a stale pixel at every tile boundary — a wrong column every 8 pixels.
+      if (this.bgCount > 0) return;
+      // CGB attribute bit 5 mirrors the tile horizontally, so the bits come out in the
+      // opposite order.
+      const xFlip = this.cgb && (this.fetchAttributes & 0x20) !== 0;
+      for (let i = 0; i < 8; i++) {
+        const bit = xFlip ? i : 7 - i;
+        const low = (this.fetchLow >> bit) & 1;
+        const high = (this.fetchHigh >> bit) & 1;
+        this.pushBg((high << 1) | low, this.fetchAttributes);
+      }
+      this.fetcherX++;
+      this.fetcherState = FETCH_TILE;
+      this.fetcherStep = 0;
+      return;
+    }
+
     this.fetcherStep++;
     if (this.fetcherStep < 2) return;
     this.fetcherStep = 0;
@@ -422,36 +444,20 @@ export class Ppu {
       }
       case FETCH_DATA_HIGH: {
         this.fetchHigh = this.vram[this.tileDataAddress() + 1]!;
-        this.fetcherState = FETCH_PUSH;
-        break;
-      }
-      default: {
-        // The fetcher runs one extra tile fetch at the start of every line and throws the
-        // result away. It costs 6 dots and is a large part of why mode 3's minimum is 172
-        // rather than 166.
-        if (!this.firstFetchDone) {
+        // The line's FIRST fetch is thrown away. It restarts HERE rather than travelling
+        // through the push step, so it costs 6 dots, not 8. Pandocs: "The 12 extra dots of
+        // penalty come from two tile fetches at the beginning of Mode 3. One is the first
+        // tile in the scanline, the other is simply discarded."
+        if (this.firstFetchDone) {
+          this.fetcherState = FETCH_PUSH;
+        } else {
           this.firstFetchDone = true;
           this.fetcherState = FETCH_TILE;
-          return;
         }
-
-        // Push ONLY into an empty FIFO. Pushing while pixels from the previous tile remain
-        // leaves a stale pixel at every tile boundary — visible as a wrong column every
-        // 8 pixels. This stall is also what paces mode 3.
-        if (this.bgCount > 0) return;
-        // CGB attribute bit 5 mirrors the tile horizontally, so the bits come out in the
-        // opposite order.
-        const xFlip = this.cgb && (this.fetchAttributes & 0x20) !== 0;
-        for (let i = 0; i < 8; i++) {
-          const bit = xFlip ? i : 7 - i;
-          const low = (this.fetchLow >> bit) & 1;
-          const high = (this.fetchHigh >> bit) & 1;
-          this.pushBg((high << 1) | low, this.fetchAttributes);
-        }
-        this.fetcherX++;
-        this.fetcherState = FETCH_TILE;
         break;
       }
+      default:
+        break;
     }
   }
 

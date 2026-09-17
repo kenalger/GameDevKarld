@@ -82,7 +82,6 @@ let fail = 0;
 
 const mealybug = mealybugCases();
 let mealybugPass = 0;
-let mealybugFail = 0;
 
 for (const testCase of [...CASES, ...mealybug]) {
   const isMealybug = testCase.name.startsWith('mealybug/');
@@ -120,8 +119,7 @@ for (const testCase of [...CASES, ...mealybug]) {
   }
 
   {
-    if (isMealybug) mealybugFail++;
-    else fail++;
+    if (!isMealybug) fail++;
     const b = diff.bounds!;
     if (!isMealybug || filter.length > 0) {
       console.log(

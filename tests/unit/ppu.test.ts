@@ -174,3 +174,75 @@ describe('STAT LY=LYC is a latch, not a live comparison', () => {
     expect(c.mmu.read(0xff41) & 0x03).toBe(0);
   });
 });
+
+/**
+ * Mode 3's length is the clock everything mid-scanline is measured against.
+ *
+ * Pandocs: "the minimum Mode 3 length is 160 + 12 = 172 dots", where the 12 "come from two
+ * tile fetches at the beginning of Mode 3. One is the first tile in the scanline, the
+ * other is simply discarded." A tile fetch is 6 dots, so both together are exactly 12 —
+ * and a fetcher that spends 8 on each lands at 175 and shifts every raster effect left.
+ */
+describe('mode 3 length', () => {
+  /** Mode 3 run lengths for three consecutive whole scanlines. */
+  function mode3Runs(scx: number): number[] {
+    const c = new GameBoyCore();
+    c.loadRom(buildRom({ cartridgeType: 0x00, romBanks: 2 }));
+    c.mmu.write(0xff40, 0x91); // LCD + BG on
+    c.mmu.write(0xff43, scx);
+    c.mmu.write(0xff42, 0);
+
+    const runs: number[] = [];
+    let last = -1;
+    let run = 0;
+    for (let dot = 0; dot < 456 * 6; dot++) {
+      c.cpu.tickT(1);
+      const mode = c.mmu.read(0xff41) & 3;
+      if (mode !== last) {
+        if (last === 3) runs.push(run);
+        last = mode;
+        run = 0;
+      }
+      run++;
+    }
+    return runs.slice(1, 4); // drop the partial line the LCD was switched on during
+  }
+
+  it('is EXACTLY 172 dots with no scroll, sprites or window', () => {
+    expect(mode3Runs(0)).toEqual([172, 172, 172]);
+  });
+
+  it('is stretched one dot per pixel discarded by SCX % 8', () => {
+    for (const scx of [1, 2, 3, 5, 7]) {
+      expect(mode3Runs(scx)).toEqual([172 + scx, 172 + scx, 172 + scx]);
+    }
+  });
+
+  it('leaves mode 0 to fill the rest of the 456-dot line', () => {
+    const c = new GameBoyCore();
+    c.loadRom(buildRom({ cartridgeType: 0x00, romBanks: 2 }));
+    c.mmu.write(0xff40, 0x91);
+
+    const runs = new Map<number, number[]>();
+    let last = -1;
+    let run = 0;
+    for (let dot = 0; dot < 456 * 5; dot++) {
+      c.cpu.tickT(1);
+      const mode = c.mmu.read(0xff41) & 3;
+      if (mode !== last) {
+        if (last >= 0) runs.set(last, [...(runs.get(last) ?? []), run]);
+        last = mode;
+        run = 0;
+      }
+      run++;
+    }
+    // Drop the first run of each mode: the LCD was switched on part-way through a line.
+    const settled = (mode: number): number[] => (runs.get(mode) ?? []).slice(1, 4);
+
+    // 80 + 172 + 204 = 456. Mode 0 sits at its MAXIMUM precisely because mode 3 is at its
+    // minimum, so getting mode 3 wrong silently corrupts HBlank timing too.
+    expect(settled(2)).toEqual([80, 80, 80]);
+    expect(settled(3)).toEqual([172, 172, 172]);
+    expect(settled(0)).toEqual([204, 204, 204]);
+  });
+});

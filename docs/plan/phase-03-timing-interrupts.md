@@ -2,7 +2,7 @@
 
 **Owner:** `gb-cpu-engineer` · **Supporting:** `gb-memory-engineer` (access timing) · **Gate:** `emu-accuracy-tester`
 **Depends on:** 02 · **Roadmap:** §15 Timing, §16 Interrupts
-**Status:** ✅ Gate met — 2026-09-15, extended 2026-09-17. Blargg `instr_timing` 1/1, `mem_timing` 3/3, `mem_timing-2` 3/3. Mooneye `acceptance/timer/*` **13/13**, `interrupts/*` 1/1, `halt_ime*` 4/4, `ei_*` 2/2 — **zero failures in the gated subsets**. Overall Mooneye acceptance rose 32 → 40 → **57 of 66 applicable**.
+**Status:** ✅ Gate met — 2026-09-15, extended 2026-09-17. Blargg `instr_timing` 1/1, `mem_timing` 3/3, `mem_timing-2` 3/3. Mooneye `acceptance/timer/*` **13/13**, `interrupts/*` 1/1, `halt_ime*` 4/4, `ei_*` 2/2 — **zero failures in the gated subsets**. Overall Mooneye acceptance rose 32 → 40 → 57 → **60 of 66 applicable**.
 
 > **2026-09-17: the instruction-timing family was never about instructions.** `call_timing`, `ret_timing`, `push_timing`, `rst_timing`, `jp_timing`, `add_sp_e_timing` and their variants — eleven tests — all failed for one reason, and it was in OAM DMA. Each one aligns a memory access against the end of a transfer and reads what comes back. Fixing the transfer fixed all of them; the model is recorded in phase 04.
 >

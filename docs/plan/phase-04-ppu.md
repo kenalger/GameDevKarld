@@ -4,6 +4,14 @@
 **Depends on:** 03 · **Roadmap:** §12 PPU, §20 Frame Loop
 **Status:** ✅ Gate met — 2026-09-15. **dmg-acid2 renders pixel-exact (0/23040 pixels differ).** Architecture: **pixel FIFO**, decision and rationale recorded in `docs/graphics.md`. Mode 3 measures 175 dots, inside the legal 172–289 range.
 
+> **2026-09-17 — mode 3 was 175 dots. It is 172.** The minimum is fixed and documented: 160 pixels plus 12, and Pandocs says exactly where the 12 goes — "two tile fetches at the beginning of Mode 3. One is the first tile in the scanline, the other is simply discarded." A tile fetch is 6 dots, so two are 12.
+>
+> This fetcher spent 8 on each, for two reasons. The discarded fetch travelled through the push step before being recognised, costing a 4th 2-dot slot. And the push itself was retried every *other* dot, where Pandocs is explicit: "the first four steps take 2 dots each and the fifth step is attempted **every dot** until it succeeds" — so every tile boundary leaked a stall dot.
+>
+> Both are now right, and the whole line is exact: mode 2 = 80, mode 3 = 172, mode 0 = 204, summing to 456. Mode 3 lengthens by exactly SCX % 8. **Mooneye 57 → 60/66**: `intr_2_0_timing`, `intr_2_mode0_timing` and `intr_2_oam_ok_timing` all measure this clock. dmg-acid2 and cgb-acid2 stay pixel-exact, and three tests plus two negative controls now pin the number.
+>
+> **The `ACCESS_T_OFFSET` sweep was re-run and again says 0**, now against the corrected PPU and OAM DMA: 60/59/59/59 for offsets 0-3, with Mealybug unmoved at every setting. The hypothesis that mid-scanline writes land at the wrong point in the M-cycle is therefore **disproved** — do not spend time on it again.
+>
 > **2026-09-17 — OAM DMA was wrong in four ways, and it was holding down sixteen tests.** All of `oam_dma*` plus the whole `call`/`ret`/`push`/`rst`/`jp`/`add_sp_e` timing family, which turn out to be DMA tests wearing instruction-timing names — each aligns a memory access against the end of a transfer and reads what comes back.
 >
 > 1. **It started one M-cycle early.** Mooneye's `oam_dma_start` states the model outright: M=0 is the write to FF46, M=1 still has OAM accessible, the transfer runs by M=2. The countdown also has to reach zero on the *last* tick of M=1 — this CPU samples the bus at the start of an M-cycle, so activating one tick later is invisible until M=3.
