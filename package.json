@@ -1,0 +1,39 @@
+{
+  "name": "webboy",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@webboy/web",
+    "build": "npm run build --workspace=@webboy/emulator && npm run build --workspace=@webboy/web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --build --force",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "fetch-test-roms": "bash scripts/fetch-test-roms.sh",
+    "scoreboard": "vite-node scripts/generate-scoreboard.ts",
+    "fetch-cpu-tests": "bash scripts/fetch-cpu-tests.sh",
+    "sm83": "vite-node scripts/run-sm83.ts",
+    "blargg": "vite-node scripts/run-blargg.ts",
+    "mooneye": "vite-node scripts/run-mooneye.ts",
+    "sound": "vite-node scripts/run-sound.ts",
+    "bench": "vite-node scripts/benchmark.ts",
+    "gba-cpu": "vite-node scripts/run-gba-cpu.ts",
+    "fetch-gba-tests": "bash scripts/fetch-gba-tests.sh",
+    "compat": "vite-node scripts/compat-sweep.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5",
+    "prettier": "^3.4.2",
+    "eslint": "^9.18.0",
+    "typescript-eslint": "^8.20.0",
+    "@eslint/js": "^9.18.0"
+  }
+}

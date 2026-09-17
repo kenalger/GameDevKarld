@@ -1,0 +1,23 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+.vite/
+.eslintcache
+
+# ---------------------------------------------------------------------------
+# ROM data must never be committed. See CLAUDE.md law #4 and docs/legal.md.
+# Test ROMs are fetched by scripts/fetch-test-roms.sh into tests/roms/.
+# ---------------------------------------------------------------------------
+*.gb
+*.gbc
+*.gba
+*.sav
+*.state
+*.srm
+tests/roms/
+tests/sm83/
+
+# Regenerated debug dumps from `npm run screenshots`.
+tests/screenshots/

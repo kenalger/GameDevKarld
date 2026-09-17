@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The Phase 01 gate needs the SM83 corpus; it is gitignored generated data.
+      - run: npm run fetch-cpu-tests
+      - run: npm run fetch-test-roms
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+  # Law #4: no ROM data may ever be committed, in any form.
+  no-roms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if any ROM file is tracked
+        run: |
+          if git ls-files | grep -iE '\.(gb|gbc|gba|sav|srm|state)$'; then
+            echo "::error::ROM or save data is tracked by git. See CLAUDE.md law #4."
+            exit 1
+          fi
+          echo "No ROM data tracked."

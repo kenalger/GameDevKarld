@@ -1,0 +1,11 @@
+dist/
+dist-types/
+node_modules/
+tests/roms/
+tests/scoreboard.json
+tests/scoreboard.md
+package-lock.json
+
+# Markdown is hand-authored: the roadmap, the phase plan and the docs use deliberate
+# line breaks and tables that prettier would reflow. Code only.
+*.md
