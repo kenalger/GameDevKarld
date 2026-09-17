@@ -144,13 +144,36 @@ iconography. No full-width gradient CTA.
 - **Mobile portrait.** The pad stacks below 560px, but touch-control placement for a real phone
   needs its own pass against a device.
 
-## If you want to adopt it
+## Adopted — 2026-09-17
 
-- Tokens and the radius/shadow rules replace the top of `apps/web/src/styles/theme.css`.
-- `App.tsx` becomes stage-then-panels instead of one stacked column.
-- `TouchControls` moves *inside* the device body, and its colours become shell-relative
-  (`--on-shell`, `--shell-key`) rather than page-relative — that is what lets the shell invert
-  without every child needing a special case.
-- Copy `fonts/` into `apps/web/public/` and keep the `@font-face` blocks. Self-hosting is not
-  optional here: a Google Fonts link would be the app's first third-party request, in a product
-  whose headline promise is that there are none.
+This is live in `apps/web`. The mock stays as the reference and the argument; the app is the
+implementation.
+
+What landed:
+
+- `apps/web/src/styles/theme.css` — rewritten on these tokens. Every selector the components
+  use survived, so no component needed a class rename.
+- `App.tsx` — the device body now wraps the screen *and* the touch pad, inside RomPicker's
+  dropzone so drag-and-drop still covers the whole device and the "Load ROM…" button stays off
+  the plastic. A power lamp and cartridge name sit on the plate above the screen.
+- `TouchControls` — unchanged markup; its colours became shell-relative in CSS
+  (`--shell-key`, `--on-shell`), which is what lets the shell invert without touching the
+  component.
+- `apps/web/public/fonts/` — Archivo and IBM Plex Mono, self-hosted with their licences.
+
+Deliberately **not** carried over: the light/dark toggle. The app follows the system setting
+only, as it did before. Adding a control means persisting the choice, which is a product
+decision rather than a styling one.
+
+Two differences from the mock, both on purpose:
+
+- The empty state keeps the device visible with an empty screen and puts the prompt underneath,
+  rather than replacing the device with a dropzone. Seeing the machine you are about to load
+  something into is better than seeing a hole where it will be.
+- The touch pad only appears on coarse pointers, as it always has. On a desktop the body holds
+  the plate and the screen alone.
+
+**Not verified in a browser.** The build is clean, the fonts resolve in `dist`, every class the
+components use has a rule and no token reference dangles — but this sandbox cannot reach a
+localhost server, so nobody has actually looked at the rendered page. That check belongs with
+the phase 09/10 browser work, which is blocked on the same thing.

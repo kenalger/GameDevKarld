@@ -1,43 +1,113 @@
-/* Semantic tokens only. No raw hex outside this file. */
-:root {
-  color-scheme: light dark;
+/* ---------------------------------------------------------------------------
+   Faces. Self-hosted from public/fonts — no CDN, no Google Fonts link.
 
-  --bg: #f4f4f5;
-  --bg-panel: #ffffff;
-  --bg-inset: #ececf0;
-  --border: #d6d6dd;
-  --border-strong: #b9b9c4;
-  --text: #17171c;
-  --text-secondary: #5c5c6b;
-  --text-tertiary: #81818f;
-  --accent: #2f6f4f;
-  --accent-text: #ffffff;
-  --danger: #a3372c;
-  --focus: #2f6f4f;
-  --screen-surround: #26262c;
-
-  --radius: 6px;
-  --gap: 12px;
-  --font-ui: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+   That is not fussiness: a webfont request would be this app's first
+   third-party call, in a product whose headline promise is that there are
+   none. Latin subset only, 55KB total. SIL OFL 1.1, licences beside them.
+   --------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-latin-var.woff2') format('woff2-variations');
+  font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('/fonts/plexmono-latin-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('/fonts/plexmono-latin-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
 }
 
+/* ---------------------------------------------------------------------------
+   Semantic tokens only. No raw hex outside this file.
+
+   Direction: instrument, not dashboard. The device is the only filled box on
+   the page; everything else is air, hairlines and tabular data. See
+   mock/README.md for the full rationale.
+   --------------------------------------------------------------------------- */
+:root {
+  --paper: #e8e4d9;
+  --ink: #1b1a17;
+  --ink-2: #57534a;
+  --ink-3: #655f54;
+
+  --rule: #c9c3b3;
+  --rule-strong: #a8a191;
+
+  /* Exactly one accent, and it only ever means state — never decoration.
+     The text variant is darker because #C23B13 measures 4.21:1 on paper and
+     small text has to clear 4.5:1. A lamp or a 2px rule only needs 3:1. */
+  --signal: #c23b13;
+  --signal-text: #b53610;
+  --signal-ink: #fff8f3;
+
+  /* Controls are filled surfaces, not outlines. Pressing goes DARKER, because
+     pressing pushes in. No borders, no offset shadows. */
+  --key-face: #dcd7c9;
+  --key-hover: #d2ccbb;
+  --press-face: #1b1a17;
+  --press-ink: #f3f0e8;
+
+  /* The device body. Shell tokens are relative to the plastic rather than the
+     page, so the shell can invert between themes without every child needing a
+     special case. */
+  --shell: #2a2721;
+  --shell-lip: rgb(255 255 255 / 0.07);
+  --on-shell: #cfc9b8;
+  --on-shell-dim: #a29b8a;
+  --shell-key: #45403a;
+  --shell-key-hover: #524c44;
+  --lamp-off: #4a463c;
+
+  /* The LCD well is a recess, so it stays dark in BOTH themes. */
+  --well-a: #17150f;
+  --well-b: #201d16;
+
+  --radius: 3px;
+  --gap: 12px;
+  --device: 620px;
+  --font-ui: 'Archivo', ui-sans-serif, system-ui, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Dark is "Stone": warm charcoal, deliberately NOT midnight. A mid ground has
+   headroom in both directions, so wells recess and plates raise; near-black
+   only ever gives you one. The shell inverts to grey plastic — what a real DMG
+   was — because on a dark page a near-black bezel reads as a hole in the
+   layout. The well does not invert: a recess is a recess. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #131316;
-    --bg-panel: #1b1b20;
-    --bg-inset: #232329;
-    --border: #2f2f37;
-    --border-strong: #43434e;
-    --text: #f0f0f3;
-    --text-secondary: #a6a6b3;
-    --text-tertiary: #7a7a88;
-    --accent: #5aa87c;
-    --accent-text: #0d0d10;
-    --danger: #e0796c;
-    --focus: #5aa87c;
-    --screen-surround: #0b0b0e;
+    --paper: #2e2b26;
+    --ink: #eae6db;
+    --ink-2: #b5ae9f;
+    --ink-3: #9d9689;
+    --rule: #45403a;
+    --rule-strong: #5a5349;
+    --signal: #d2673a;
+    --signal-text: #dd7a4e;
+    --signal-ink: #1b120c;
+    --key-face: #3e3a32;
+    --key-hover: #4a453c;
+    --press-face: #14120f;
+    --press-ink: #eae6db;
+    --shell: #8e887c;
+    --shell-lip: rgb(255 255 255 / 0.22);
+    --on-shell: #23201b;
+    --on-shell-dim: #23201b;
+    --shell-key: #a39c8d;
+    --shell-key-hover: #afa89a;
+    --lamp-off: #6f695e;
   }
+}
+
+:root {
+  color-scheme: light dark;
 }
 
 * {
@@ -46,62 +116,125 @@
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
 }
 
 .app {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  max-width: 720px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 0 16px;
-  padding-block: 16px;
+  padding: 24px 24px 0;
   gap: var(--gap);
 }
 
+/* ---------------------------------------------------------------------------
+   Masthead
+   --------------------------------------------------------------------------- */
 .header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gap);
-  border-bottom: 1px solid var(--border);
-  padding-bottom: var(--gap);
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 16px;
 }
 .header h1 {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 800;
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
 }
+/* The privacy claim is this product's entire thesis, so it is underlined in
+   signal rather than left as 12px grey filler beside the title. */
 .header .tagline {
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-size: 12px;
+  font-weight: 500;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--signal);
 }
 
+/* ---------------------------------------------------------------------------
+   The device — the only filled box on the page, and the largest object on it.
+   One continuous piece of plastic holding the screen AND the pad: split them
+   and the device reads as two unrelated slabs the moment the shell inverts.
+   --------------------------------------------------------------------------- */
+.body {
+  background: var(--shell);
+  border-radius: 4px;
+  border-top: 1px solid var(--shell-lip);
+  padding: 18px 20px 22px;
+  width: 100%;
+  max-width: var(--device);
+  margin-inline: auto;
+}
+
+.plate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--on-shell-dim);
+}
+.plate .rom-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--on-shell);
+  margin-left: auto;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lamp {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lamp-off);
+  flex: none;
+}
+.lamp[data-running='true'] {
+  background: var(--signal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 25%, transparent);
+}
+
+/* The recessed LCD well. The only gradient in the file, and it earns its place:
+   it reads as a moulded plastic lip, which is what it is. */
 .stage {
-  background: var(--screen-surround);
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--well-a) 0%, var(--well-b) 100%);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 12px;
   display: grid;
   place-items: center;
+  box-shadow:
+    inset 0 2px 4px rgb(0 0 0 / 0.55),
+    0 1px 0 var(--shell-lip);
 }
 
 /* Native resolution backing store, scaled by CSS only. Smoothing must stay off. */
 .screen {
   display: block;
-  width: min(100%, 480px);
+  width: 100%;
   aspect-ratio: 160 / 144;
   height: auto;
   image-rendering: pixelated;
@@ -118,99 +251,133 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
-  border: 2px dashed var(--accent);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--bg-panel) 85%, transparent);
-  color: var(--text);
-  font-weight: 500;
+  border: 2px dashed var(--signal);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  color: var(--ink);
+  font-weight: 600;
 }
 
+/* ---------------------------------------------------------------------------
+   Controls — surfaces, not outlines.
+   --------------------------------------------------------------------------- */
 .transport {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+}
+.app > .transport {
+  justify-content: center;
+  max-width: var(--device);
+  margin-inline: auto;
+  width: 100%;
 }
 
 button {
   font: inherit;
-  padding: 7px 13px;
+  padding: 9px 15px;
+  border: 0;
   border-radius: var(--radius);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-panel);
-  color: var(--text);
+  background: var(--key-face);
+  color: var(--ink);
   cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 button:hover:not(:disabled) {
-  border-color: var(--text-tertiary);
+  background: var(--key-hover);
+}
+button:active:not(:disabled) {
+  background: var(--press-face);
+  color: var(--press-ink);
 }
 button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 button.primary {
-  background: var(--accent);
-  color: var(--accent-text);
-  border-color: var(--accent);
+  background: var(--signal);
+  color: var(--signal-ink);
+}
+button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--signal) 88%, #000);
 }
 
+/* Panels lost their box: separation is whitespace and the one rule. */
 .panel {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--gap);
+  padding: 0;
 }
 
+/* ---------------------------------------------------------------------------
+   Readout strip — no box, no dividers, just columns under the device.
+   --------------------------------------------------------------------------- */
 .statusbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-secondary);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: var(--device);
+  margin-inline: auto;
+  width: 100%;
   font-variant-numeric: tabular-nums;
 }
+.statusbar div {
+  display: block;
+}
 .statusbar dt {
-  color: var(--text-tertiary);
-  display: inline;
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 3px;
 }
 .statusbar dd {
-  display: inline;
-  margin: 0 0 0 6px;
-  color: var(--text);
-}
-.statusbar div {
-  display: inline;
+  display: block;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 19px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
 }
 
 .error {
-  border: 1px solid var(--danger);
-  color: var(--danger);
-  border-radius: var(--radius);
-  padding: 10px var(--gap);
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--signal-text);
+  font-weight: 500;
+  padding: 10px 0;
+  border-top: 1px solid var(--signal);
+  border-bottom: 1px solid var(--signal);
 }
 
 .empty-state {
-  color: var(--text-secondary);
+  color: var(--ink-2);
   text-align: center;
-  max-width: 42ch;
+  max-width: 44ch;
   margin: 0 auto;
+  font-size: 13.5px;
 }
 .empty-state strong {
-  color: var(--text);
+  color: var(--ink);
   display: block;
   margin-bottom: 4px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
 }
 
 .disclaimer {
   margin-top: auto;
-  padding-top: var(--gap);
-  border-top: 1px solid var(--border);
-  color: var(--text-tertiary);
-  font-size: 12px;
+  padding-block: 20px 34px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-3);
+  font-size: 11.5px;
 }
 .disclaimer p {
   margin: 0 0 6px;
+  max-width: 62ch;
 }
 
 .visually-hidden {
@@ -225,105 +392,117 @@ button.primary {
   border: 0;
 }
 
+/* ---------------------------------------------------------------------------
+   Panel content. Full width buys COLUMNS — that is the only reason to take it.
+   --------------------------------------------------------------------------- */
 .panel-title {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
   margin: 0 0 10px;
 }
 
 .bindings {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0 48px;
   margin: 0;
 }
 .bindings > div {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 5px 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-inset);
-  font-size: 12px;
-  transition: background 60ms linear;
+  gap: 12px;
+  align-items: baseline;
+  padding-block: 9px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13.5px;
+  transition: color 60ms linear;
 }
 /* Live pressed state, driven by rAF writing a data attribute — never React state. */
-.bindings > div[data-pressed='true'] {
-  background: var(--accent);
-  border-color: var(--accent);
-}
 .bindings > div[data-pressed='true'] dt,
 .bindings > div[data-pressed='true'] dd {
-  color: var(--accent-text);
+  color: var(--signal-text);
+  font-weight: 600;
 }
 .bindings dt {
-  color: var(--text);
-  font-weight: 500;
+  color: var(--ink);
 }
 .bindings dd {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--ink-2);
   font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .hint {
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: var(--text-tertiary);
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  max-width: 58ch;
 }
 
 .slots {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 6px;
 }
 .slots li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-inset);
+  gap: 14px;
+  padding-block: 10px;
+  border-bottom: 1px solid var(--rule);
 }
 .slot-thumb {
-  width: 60px;
+  width: 64px;
   aspect-ratio: 160 / 144;
   image-rendering: pixelated;
-  border-radius: 3px;
-  background: var(--screen-surround);
+  border-radius: 2px;
+  background: var(--well-a);
   flex: none;
 }
 .slot-thumb--empty {
-  border: 1px dashed var(--border-strong);
+  background: none;
+  border: 1px dashed var(--rule-strong);
 }
 .slot-label {
   flex: 1;
   display: flex;
   flex-direction: column;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .slot-label small {
-  color: var(--text-tertiary);
+  color: var(--ink-3);
   font-family: var(--font-mono);
+  font-size: 11px;
 }
 .slot-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 .slot-actions button {
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 4px 0;
+  font-size: 10px;
+  background: none;
+  color: var(--ink-3);
+  border-radius: 0;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.slot-actions button:hover:not(:disabled) {
+  background: none;
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.slot-actions button:active:not(:disabled) {
+  background: none;
+  color: var(--signal-text);
 }
 
 /* ---------------------------------------------------------------------------
    On-screen controls. Shown on coarse pointers (touch) and hidden on mouse.
+   They live INSIDE the device body, so their colours are shell-relative.
    touch-action: none stops the page scrolling/zooming under the player's thumb.
    --------------------------------------------------------------------------- */
 .touch {
@@ -332,10 +511,10 @@ button.primary {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  margin-top: var(--gap);
+  margin-top: 20px;
   grid-template-areas: 'dpad face' 'menu menu';
   grid-template-columns: 1fr 1fr;
-  gap: var(--gap);
+  gap: 18px;
   align-items: center;
 }
 
@@ -346,18 +525,22 @@ button.primary {
 }
 
 .touch button {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
-  font-weight: 600;
+  background: var(--shell-key);
+  border: 0;
+  color: var(--on-shell);
+  font-weight: 700;
+  letter-spacing: 0.06em;
   /* 48px is the Material minimum; a thumb is not a mouse pointer. */
   min-width: 48px;
   min-height: 48px;
 }
-.touch button[data-pressed='true'] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
+.touch button:hover:not(:disabled) {
+  background: var(--shell-key-hover);
+}
+.touch button[data-pressed='true'],
+.touch button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--shell) 55%, #000);
+  color: var(--on-shell);
 }
 
 .dpad {
@@ -366,14 +549,15 @@ button.primary {
   grid-template-columns: repeat(3, 52px);
   grid-template-rows: repeat(3, 52px);
   justify-content: center;
+  gap: 2px;
 }
 .dpad-up {
   grid-area: 1 / 2;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .dpad-left {
   grid-area: 2 / 1;
-  border-radius: 8px 0 0 8px;
+  border-radius: var(--radius) 0 0 var(--radius);
 }
 .dpad-centre {
   grid-area: 2 / 2;
@@ -382,17 +566,17 @@ button.primary {
 }
 .dpad-right {
   grid-area: 2 / 3;
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 .dpad-down {
   grid-area: 3 / 2;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .face {
   grid-area: face;
   display: flex;
-  gap: 14px;
+  gap: 16px;
   justify-content: center;
   align-items: center;
 }
@@ -400,7 +584,7 @@ button.primary {
   width: 62px;
   height: 62px;
   border-radius: 50%;
-  font-size: 16px;
+  font-size: 15px;
 }
 .face-a {
   transform: translateY(-14px);
@@ -409,91 +593,107 @@ button.primary {
 .menu {
   grid-area: menu;
   display: flex;
-  gap: 14px;
+  gap: 12px;
   justify-content: center;
 }
 .menu button {
   border-radius: 20px;
-  padding: 0 18px;
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  padding: 6px 18px;
+  min-height: 0;
+  font-size: 10px;
 }
 
-/* Fullscreen: the controls overlay the screen rather than sitting below it. */
+/* Fullscreen: the screen fills the display and the plastic gets out of the way. */
 .app:fullscreen {
   max-width: none;
   justify-content: center;
+  padding: 0;
+}
+.app:fullscreen .body {
+  max-width: none;
+  border-radius: 0;
+  padding: 0;
 }
 .app:fullscreen .stage {
   flex: 1;
-  border: none;
   border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
+/* ---------------------------------------------------------------------------
+   Cartridge info — label left, value right in mono, hairline between.
+   --------------------------------------------------------------------------- */
 .info {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0 48px;
   margin: 0;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .info > div {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 5px 9px;
-  background: var(--bg-inset);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  gap: 12px;
+  align-items: baseline;
+  padding-block: 9px;
+  border-bottom: 1px solid var(--rule);
 }
 .info dt {
-  color: var(--text-tertiary);
+  color: var(--ink-2);
 }
 .info dd {
   margin: 0;
-  color: var(--text);
+  color: var(--ink);
   font-family: var(--font-mono);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 .info dd[data-warn='true'] {
-  color: var(--danger);
+  color: var(--signal-text);
   font-weight: 600;
 }
 
+/* Tabs are a ruled register, not a row of buttons. */
 .tabs {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: var(--gap);
+  gap: 26px;
+  border-bottom: 1px solid var(--rule);
   flex-wrap: wrap;
 }
 .tabs button {
-  border: none;
+  border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 0;
   background: none;
-  color: var(--text-secondary);
-  padding: 7px 12px;
-  font-size: 13px;
+  color: var(--ink-3);
+  padding: 9px 0;
+  margin-bottom: -1px;
+  font-size: 11px;
+}
+.tabs button:hover:not(:disabled) {
+  background: none;
+  color: var(--ink-2);
+}
+.tabs button:active:not(:disabled) {
+  background: none;
+  color: var(--ink);
 }
 .tabs button[aria-selected='true'] {
-  color: var(--text);
-  border-bottom-color: var(--accent);
-  font-weight: 500;
+  color: var(--ink);
+  border-bottom-color: var(--signal);
 }
 
 .regs {
   margin: 0;
-  padding: 10px;
-  background: var(--bg-inset);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  padding: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 12.5px;
+  line-height: 1.9;
   font-variant-numeric: tabular-nums;
   white-space: pre;
   overflow-x: auto;
+  color: var(--ink);
 }
 
 .listing {
@@ -501,33 +701,46 @@ button.primary {
   margin: 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  font-size: 12.5px;
+  line-height: 1.9;
   overflow-x: auto;
 }
 .listing li {
   display: grid;
   grid-template-columns: 5ch 9ch 1fr;
-  gap: 10px;
-  padding: 3px 9px;
+  gap: 12px;
+  padding-inline: 4px;
   white-space: nowrap;
 }
 .listing li[data-current='true'] {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--signal-text);
   font-weight: 600;
 }
 .listing-bytes {
-  color: var(--text-tertiary);
+  color: var(--ink-3);
 }
 
 input[type='text'] {
   font: inherit;
-  padding: 7px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-panel);
-  color: var(--text);
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
   font-family: var(--font-mono);
+  font-size: 13px;
   min-width: 14ch;
+}
+input[type='text']:focus {
+  border-bottom-color: var(--signal);
+}
+
+/* The one rule, reused wherever a divider is needed. It is the only line style
+   in the file — there are no enclosing outlines anywhere except the device. */
+.rule {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 8px 0 0;
+  width: 100%;
 }

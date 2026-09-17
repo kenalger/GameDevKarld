@@ -72,7 +72,7 @@ export function App(): React.JSX.Element {
     <div className="app" ref={appRef}>
       <header className="header">
         <h1>WebBoy</h1>
-        <span className="tagline">Your ROM stays on your device.</span>
+        <span className="tagline">Your ROM never leaves this device</span>
       </header>
 
       {snapshot.error && (
@@ -83,8 +83,19 @@ export function App(): React.JSX.Element {
 
       <ErrorBoundary onExportState={exportState}>
         <RomPicker onLoad={handleLoad} onError={handleError}>
-          <div className="stage">
-            <Display romName={snapshot.romName} />
+          <div className="body">
+            <div className="plate">
+              <span className="lamp" data-running={snapshot.status === 'running'} aria-hidden />
+              <span>
+                {snapshot.status === 'running' ? 'Running' : loaded ? 'Paused' : 'No cartridge'}
+              </span>
+              {snapshot.romName && <span className="rom-name">{snapshot.romName}</span>}
+            </div>
+            <div className="stage">
+              <Display romName={snapshot.romName} />
+            </div>
+            {/* Inside the plastic: the pad is hardware. The transport below is not. */}
+            {loaded && <TouchControls />}
           </div>
         </RomPicker>
       </ErrorBoundary>
@@ -96,8 +107,6 @@ export function App(): React.JSX.Element {
           never sent anywhere.
         </p>
       )}
-
-      {loaded && <TouchControls />}
 
       <div className="transport" role="group" aria-label="Emulator controls">
         <button
@@ -135,6 +144,7 @@ export function App(): React.JSX.Element {
 
       {loaded && (
         <>
+          <hr className="rule" />
           <div className="tabs" role="tablist" aria-label="Panels">
             {TABS.map((name) => (
               <button
