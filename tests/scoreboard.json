@@ -1,0 +1,1087 @@
+{
+  "generatedAt": "2026-09-17T08:06:19.610Z",
+  "entries": [
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "01-special",
+      "outcome": "pass",
+      "detail": "01-special\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "02-interrupts",
+      "outcome": "pass",
+      "detail": "02-interrupts\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "03-op sp,hl",
+      "outcome": "pass",
+      "detail": "03-op sp,hl\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "04-op r,imm",
+      "outcome": "pass",
+      "detail": "04-op r,imm\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "05-op rp",
+      "outcome": "pass",
+      "detail": "05-op rp\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "06-ld r,r",
+      "outcome": "pass",
+      "detail": "06-ld r,r\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "07-jr,jp,call,ret,rst",
+      "outcome": "pass",
+      "detail": "07-jr,jp,call,ret,rst\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "08-misc instrs",
+      "outcome": "pass",
+      "detail": "08-misc instrs\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "09-op r,r",
+      "outcome": "pass",
+      "detail": "09-op r,r\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "10-bit ops",
+      "outcome": "pass",
+      "detail": "10-bit ops\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/cpu_instrs",
+      "test": "11-op a,(hl)",
+      "outcome": "pass",
+      "detail": "11-op a,(hl)\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/instr_timing",
+      "test": "instr_timing",
+      "outcome": "pass",
+      "detail": "instr_timing\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/mem_timing",
+      "test": "01-read_timing",
+      "outcome": "pass",
+      "detail": "01-read_timing\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/mem_timing",
+      "test": "02-write_timing",
+      "outcome": "pass",
+      "detail": "02-write_timing\n\n\nPassed"
+    },
+    {
+      "suite": "blargg/mem_timing",
+      "test": "03-modify_timing",
+      "outcome": "pass",
+      "detail": "03-modify_timing\n\n\nPassed"
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "add_sp_e_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "mem_oam",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "reg_f",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "unused_hwio-GS",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_div-S",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_div-dmg0",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_div-dmgABCmgb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_div2-S",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_hwio-S",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_hwio-dmg0",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_hwio-dmgABCmgb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_regs-dmg0",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_regs-dmgABC",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_regs-mgb",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_regs-sgb",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_regs-sgb2",
+      "outcome": "expected-fail",
+      "detail": "Registers all 0x42 — test ROM reported failure.",
+      "subsystem": "CPU/boot",
+      "reason": "Model-specific: WebBoy emulates a DMG-ABC. dmg0/mgb/sgb/sgb2/SGB have different boot state."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "call_cc_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "call_cc_timing2",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "call_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "call_timing2",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "di_timing-GS",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "div_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "ei_sequence",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "ei_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "halt_ime0_ei",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "halt_ime0_nointr_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "halt_ime1_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "halt_ime1_timing2-GS",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "if_ie_registers",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "daa",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "ie_push",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "intr_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "jp_cc_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "jp_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "ld_hl_sp_e_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "basic",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "reg_read",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "sources-GS",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "oam_dma_restart",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "oam_dma_start",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "oam_dma_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "pop_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "hblank_ly_scx_timing-GS",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "intr_1_2_timing-GS",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "intr_2_0_timing",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "intr_2_mode0_timing",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "intr_2_mode0_timing_sprites",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "intr_2_mode3_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "intr_2_oam_ok_timing",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "lcdon_timing-GS",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "lcdon_write_timing-GS",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "stat_irq_blocking",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "stat_lyc_onoff",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "vblank_stat_intr-GS",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "push_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "rapid_di_ei",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "ret_cc_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "ret_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "reti_intr_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "reti_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "rst_timing",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "boot_sclk_align-dmgABCmgb",
+      "outcome": "fail",
+      "detail": "Registers all 0x42 — test ROM reported failure."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "div_write",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "rapid_toggle",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tim00",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tim00_div_trigger",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tim01",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tim01_div_trigger",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tim10",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tim10_div_trigger",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tim11",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tim11_div_trigger",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tima_reload",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tima_write_reloading",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/acceptance",
+      "test": "tma_write_reloading",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "dmg-acid2",
+      "test": "dmg-acid2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "bits_bank1",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "bits_bank2",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "bits_mode",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "bits_ramg",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "multicart_rom_8Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "ram_256kb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "ram_64kb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_16Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_1Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_2Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_4Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_512kb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_8Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "bits_ramg",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "bits_romb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "bits_unused",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "ram",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_1Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_2Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_512kb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_16Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_1Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_2Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_32Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_4Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_512kb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_64Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "mooneye/emulator-only",
+      "test": "rom_8Mb",
+      "outcome": "pass",
+      "detail": "Fibonacci register signature matched."
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "01-registers",
+      "outcome": "pass",
+      "detail": "01-registers\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "02-len ctr",
+      "outcome": "pass",
+      "detail": "02-len ctr\n\n0 1 2 3 \nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "03-trigger",
+      "outcome": "pass",
+      "detail": "03-trigger\n\n0 1 2 3 \nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "04-sweep",
+      "outcome": "pass",
+      "detail": "04-sweep\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "05-sweep details",
+      "outcome": "pass",
+      "detail": "05-sweep details\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "06-overflow on trigger",
+      "outcome": "pass",
+      "detail": "06-overflow on trigger\n\n0555 0666 071C 0787 07C1 07E0 07F0 \n0556 0667 071D 0788 07C2 07E1 07F1 \nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "07-len sweep period sync",
+      "outcome": "pass",
+      "detail": "07-len sweep period sync\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "08-len ctr during power",
+      "outcome": "pass",
+      "detail": "08-len ctr during power\n\n33 44 11 22 \nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "09-wave read while on",
+      "outcome": "fail",
+      "detail": "Status 0x1: 09-wave read while on\n\nFF 11 FF 11 FF 22 FF 22 FF 33 FF 33 FF 44 FF 44 FF 55 FF 55 FF 66 FF 66 FF 77 FF 77 FF 88 FF 88 FF 99 FF 99 FF AA FF AA FF BB FF BB FF CC FF CC FF DD FF DD FF EE FF EE FF FF FF FF FF 00 FF 00 FF 11 FF 11 FF 12821B56 \nFailed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "10-wave trigger while on",
+      "outcome": "fail",
+      "detail": "Status 0x1: 10-wave trigger while on\n\n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE "
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "11-regs after power",
+      "outcome": "pass",
+      "detail": "11-regs after power\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/dmg_sound",
+      "test": "12-wave write while on",
+      "outcome": "fail",
+      "detail": "Status 0x1: 12-wave write while on\n\n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 F7 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 F7 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 F7 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 F7 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 F7 44 55 66 77 88 99 AA BB CC DD EE FF"
+    },
+    {
+      "suite": "cgb-acid2",
+      "test": "cgb-acid2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "01-registers",
+      "outcome": "pass",
+      "detail": "01-registers\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "02-len ctr",
+      "outcome": "pass",
+      "detail": "02-len ctr\n\n0 1 2 3 \nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "03-trigger",
+      "outcome": "pass",
+      "detail": "03-trigger\n\n0 1 2 3 \nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "04-sweep",
+      "outcome": "pass",
+      "detail": "04-sweep\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "05-sweep details",
+      "outcome": "pass",
+      "detail": "05-sweep details\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "06-overflow on trigger",
+      "outcome": "pass",
+      "detail": "06-overflow on trigger\n\n0555 0666 071C 0787 07C1 07E0 07F0 \n0556 0667 071D 0788 07C2 07E1 07F1 \nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "07-len sweep period sync",
+      "outcome": "pass",
+      "detail": "07-len sweep period sync\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "08-len ctr during power",
+      "outcome": "pass",
+      "detail": "08-len ctr during power\n\n40 00 40 40 \nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "09-wave read while on",
+      "outcome": "fail",
+      "detail": "Status 0x1: 09-wave read while on\n\nFF 11 FF 11 FF 22 FF 22 FF 33 FF 33 FF 44 FF 44 FF 55 FF 55 FF 66 FF 66 FF 77 FF 77 FF 88 FF 88 FF 99 FF 99 FF AA FF AA FF BB FF BB FF CC FF CC FF DD FF DD FF EE FF EE FF FF FF FF FF 00 FF 00 FF 11 FF 11 FF 12821B56 \nFailed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "10-wave trigger while on",
+      "outcome": "pass",
+      "detail": "10-wave trigger while on\n\n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF \n00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE "
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "11-regs after power",
+      "outcome": "pass",
+      "detail": "11-regs after power\n\n\nPassed\n"
+    },
+    {
+      "suite": "blargg/cgb_sound",
+      "test": "12-wave",
+      "outcome": "fail",
+      "detail": "Status 0x2: 12-wave\n\n\nTimer period or phase resetting is wrong\n\nFailed #2\n"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m2_win_en_toggle",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_bgp_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_bgp_change_sprites",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_bg_en_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_bg_en_change2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_bg_map_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_bg_map_change2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_obj_en_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_obj_en_change_variant",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_obj_size_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_obj_size_change_scx",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_tile_sel_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_tile_sel_change2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_tile_sel_win_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_tile_sel_win_change2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_win_en_change_multiple",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_win_en_change_multiple_wx",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_win_map_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_lcdc_win_map_change2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_obp0_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_scx_high_5_bits",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_scx_high_5_bits_change2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_scx_low_3_bits",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_scy_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_scy_change2",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_window_timing",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_window_timing_wx_0",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_wx_4_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_wx_4_change_sprites",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_wx_5_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "m3_wx_6_change",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    },
+    {
+      "suite": "mealybug",
+      "test": "win_without_bg",
+      "outcome": "screenshot",
+      "detail": "pixel-compared by `npm run screenshots`"
+    }
+  ],
+  "totals": {
+    "pass": 119,
+    "fail": 14,
+    "timeout": 0,
+    "unavailable": 0,
+    "screenshot": 34,
+    "expected-fail": 9
+  }
+}
