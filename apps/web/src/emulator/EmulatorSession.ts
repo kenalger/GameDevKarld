@@ -45,6 +45,10 @@ class EmulatorSession {
     savesRestored: false,
   };
   private rafId: number | null = null;
+  /** True when the tab-hide handler paused us, so returning may resume automatically. */
+  private autoPaused = false;
+  /** Set when audio could not be woken without a gesture; the next input wakes it. */
+  private audioNeedsGesture = false;
   private ctx: CanvasRenderingContext2D | null = null;
   private image: ImageData | null = null;
 
@@ -262,6 +266,32 @@ class EmulatorSession {
 
   /* ---------------------------------- audio ---------------------------------- */
 
+  /**
+   * Wakes a suspended AudioContext.
+   *
+   * Hiding the tab suspends it, and a suspended context can only be resumed by a USER
+   * GESTURE. When this runs from a click that is satisfied; when it runs from the
+   * visibility handler it is not, so a failure is recorded rather than reported and the
+   * next key or tap wakes it. Raising an error banner on every tab switch would be noise.
+   */
+  private wakeAudio(): void {
+    void this.audio
+      .start()
+      .then(() => {
+        this.audioNeedsGesture = false;
+      })
+      .catch(() => {
+        this.audioNeedsGesture = true;
+      });
+  }
+
+  /** Called from the first input after a gesture-less resume. Cheap and idempotent. */
+  private wakeAudioOnGesture = (): void => {
+    if (!this.audioNeedsGesture) return;
+    this.audioNeedsGesture = false;
+    void this.audio.start().catch(() => undefined);
+  };
+
   private async startAudio(): Promise<void> {
     try {
       await this.audio.start();
@@ -325,9 +355,19 @@ class EmulatorSession {
   attachInput(): () => void {
     this.keyboard.setBindings(loadBindings());
     this.detachKeyboard = this.keyboard.attach();
+
+    // Returning to the tab resumes the game without a gesture, so the AudioContext may
+    // refuse to wake. These are the cheapest possible listeners — they bail on the first
+    // line unless audio is actually waiting — and they are what gets sound back for a
+    // player who resumes with the keyboard and never touches a button.
+    window.addEventListener('pointerdown', this.wakeAudioOnGesture, { passive: true });
+    window.addEventListener('keydown', this.wakeAudioOnGesture, { passive: true });
+
     return () => {
       this.detachKeyboard?.();
       this.detachKeyboard = null;
+      window.removeEventListener('pointerdown', this.wakeAudioOnGesture);
+      window.removeEventListener('keydown', this.wakeAudioOnGesture);
     };
   }
 
@@ -354,6 +394,9 @@ class EmulatorSession {
 
   resume(): void {
     if (this.snapshot.status !== 'paused') return;
+
+    this.wakeAudio();
+
     this.manager.resume();
     this.pacer.reset();
     this.update({ status: 'running' });
@@ -370,21 +413,30 @@ class EmulatorSession {
 
   /** Pause on hide; on return, drop accumulated time rather than running a catch-up burst. */
   handleVisibilityChange(hidden: boolean): void {
-    // A key held when the tab is hidden never delivers its keyup.
     if (hidden) {
+      // A key held when the tab is hidden never delivers its keyup.
       this.input.releaseAll();
       this.gamepad.releaseAll();
-    }
-    if (hidden) this.flushSave();
-    if (hidden) void this.audio.suspend();
-    if (hidden) {
+      this.flushSave();
+      void this.audio.suspend();
+
       if (this.snapshot.status === 'running') {
         this.stop();
         this.manager.pause();
+        this.autoPaused = true;
         this.update({ status: 'paused' });
       }
-    } else {
-      this.pacer.reset();
+      return;
+    }
+
+    this.pacer.reset();
+
+    // Coming back to a frozen picture with no sound and no explanation reads as a crash —
+    // it is the single most common complaint about this app. If WE paused on hide, undo it.
+    // A pause the player asked for is left alone.
+    if (this.autoPaused) {
+      this.autoPaused = false;
+      this.resume();
     }
   }
 

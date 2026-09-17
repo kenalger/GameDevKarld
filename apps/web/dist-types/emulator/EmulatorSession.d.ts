@@ -29,6 +29,10 @@ declare class EmulatorSession {
     readonly audio: AudioOutput;
     private snapshot;
     private rafId;
+    /** True when the tab-hide handler paused us, so returning may resume automatically. */
+    private autoPaused;
+    /** Set when audio could not be woken without a gesture; the next input wakes it. */
+    private audioNeedsGesture;
     private ctx;
     private image;
     private frameCount;
@@ -71,6 +75,17 @@ declare class EmulatorSession {
         filename: string;
     } | null;
     importState(data: Uint8Array): void;
+    /**
+     * Wakes a suspended AudioContext.
+     *
+     * Hiding the tab suspends it, and a suspended context can only be resumed by a USER
+     * GESTURE. When this runs from a click that is satisfied; when it runs from the
+     * visibility handler it is not, so a failure is recorded rather than reported and the
+     * next key or tap wakes it. Raising an error banner on every tab switch would be noise.
+     */
+    private wakeAudio;
+    /** Called from the first input after a gesture-less resume. Cheap and idempotent. */
+    private wakeAudioOnGesture;
     private startAudio;
     setMuted(muted: boolean): void;
     getAudioStats(): import("../audio/AudioOutput.js").AudioStats;
