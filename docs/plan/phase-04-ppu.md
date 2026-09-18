@@ -10,7 +10,9 @@
 >
 > Both are now right, and the whole line is exact: mode 2 = 80, mode 3 = 172, mode 0 = 204, summing to 456. Mode 3 lengthens by exactly SCX % 8. **Mooneye 57 → 60/66**: `intr_2_0_timing`, `intr_2_mode0_timing` and `intr_2_oam_ok_timing` all measure this clock. dmg-acid2 and cgb-acid2 stay pixel-exact, and three tests plus two negative controls now pin the number.
 >
-> **The `ACCESS_T_OFFSET` sweep was re-run and again says 0**, now against the corrected PPU and OAM DMA: 60/59/59/59 for offsets 0-3, with Mealybug unmoved at every setting. The hypothesis that mid-scanline writes land at the wrong point in the M-cycle is therefore **disproved** — do not spend time on it again.
+> **The `ACCESS_T_OFFSET` sweep was re-run and again says 0**, now against the corrected PPU and OAM DMA: Mooneye scores 60/59/59/59 for offsets 0-3.
+>
+> **Correction, 2026-09-18.** That sweep was first recorded as showing "Mealybug unmoved at every setting", and concluded from it that the CPU write phase was not involved. **The measurement was wrong**: it compared Mealybug's pass/fail count, which is 0/24 at every offset because none of them passes, rather than the differing-pixel count, which moves a great deal — `m3_bgp_change` is 2218 differing pixels at offset 0 and 5084 at offsets 1, 2 and 3. So offset 0 is still correct, and by a wide margin, but "the write phase has no effect" was never established. Measure the pixel diff, not the verdict, when sweeping anything against Mealybug.
 >
 > **2026-09-17 — OAM DMA was wrong in four ways, and it was holding down sixteen tests.** All of `oam_dma*` plus the whole `call`/`ret`/`push`/`rst`/`jp`/`add_sp_e` timing family, which turn out to be DMA tests wearing instruction-timing names — each aligns a memory access against the end of a transfer and reads what comes back.
 >

@@ -76,10 +76,12 @@ Ordered by how likely they are to bite.
 
 - **Mealybug 0/24 — mid-scanline register effects.** Register writes landing *during* mode 3
   (LCDC, BGP, the window). Two hypotheses are already **disproved and recorded** in
-  `docs/plan/phase-04-ppu.md`: it is not mode 3's length (now exactly 172 dots, verified) and it
-  is not the CPU write phase (`ACCESS_T_OFFSET` re-swept: 60/59/59/59, Mealybug unmoved at every
-  setting). Do not re-test either. What is missing is the per-dot effect of a write on a fetch
-  already in flight.
+  `docs/plan/phase-04-ppu.md`. **Eliminated:** mode 3's length (now exactly 172 dots, verified);
+  a constant lag between the FIFO pop and the palette lookup (delaying BGP by 0-4 dots makes it
+  monotonically worse). **Not eliminated, despite an earlier note here saying so:** the CPU write
+  phase. That note was reasoned from Mealybug's pass/fail count rather than its pixel diff, and
+  the diff does move — 2218 at `ACCESS_T_OFFSET` 0 versus 5084 at 1-3. Offset 0 is still clearly
+  best. When sweeping anything against Mealybug, measure the pixel diff, never the verdict.
 - **Five Mooneye `ppu/*` tests** — `hblank_ly_scx_timing`, `intr_2_mode0_timing_sprites`,
   `lcdon_timing`, `lcdon_write_timing`, `vblank_stat_intr`. Same gap as above, seen from the
   other side.
