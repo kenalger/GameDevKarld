@@ -137,6 +137,13 @@ declare class EmulatorSession {
     importSave(data: Uint8Array): void;
     /** Starts listening for keyboard input. Returns a teardown function. */
     attachInput(): () => void;
+    /**
+     * Stops player input reaching the game, for the duration of a binding capture.
+     *
+     * Every source, not just the keyboard: a rebind should not be interrupted by a thumb on
+     * the on-screen pad or a resting gamepad stick.
+     */
+    setInputSuppressed(suppressed: boolean): void;
     getBindings(): Bindings;
     setBindings(bindings: Bindings): void;
     pause(): void;

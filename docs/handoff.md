@@ -12,11 +12,11 @@ right now** — including the things that are wrong.
 | | |
 |---|---|
 | Branch | `main`, working tree clean |
-| Tip | `f70fc4c` |
-| **Unpushed** | **17 commits. `origin/main` is still at `Plan`.** |
+| Tip | `a642f61`+ |
+| **Unpushed** | **21 commits. `origin/main` is still at `Plan`.** |
 | Source | ~14,200 lines, excluding tests |
-| Tests | 940 passing, 1 skipped |
-| Performance | 20.7x realtime, p99 frame time 0.92ms (5.5% of budget) |
+| Tests | 975 passing, 1 skipped |
+| Performance | ~20x realtime, p99 well under budget |
 
 Everything green: `npm test`, `typecheck`, `lint` (0 errors, 30 pre-existing `no-console`
 warnings in scripts), `prettier --check`, `build`.
@@ -64,10 +64,9 @@ Proposed migration, if changed: if the stored bindings exactly equal the old def
 never customised, so upgrade silently; otherwise keep their mapping and show a dismissible note.
 This is muscle memory, so it is the owner's call.
 
-### 3. Order of work — cheats or keyboard first
+### 3. ~~Order of work~~ — done
 
-Both are researched and ready. Recommendation is keyboard first: smaller, fixes a WCAG Level A
-gap, and the storage layer already exists.
+Both shipped. See `docs/plan/phase-16-cheats-controls.md`.
 
 ---
 
@@ -127,36 +126,33 @@ stated in the commit message and in `mock/README.md` rather than being quietly a
 
 ---
 
+## Built since this file was written
+
+Phase 16: Game Genie and GameShark for GB/GBC, the Cheats panel, user-editable keyboard
+bindings, and quick save/load on the transport row. Details and the decisions behind them
+are in `docs/plan/phase-16-cheats-controls.md`.
+
+Two discoverability bugs were fixed along the way, both the same shape: a working feature
+nobody could find. The key bindings now print under the device, and save/load state sits
+next to Pause instead of only in a tab below the fold.
+
 ## Research done, not yet built
 
-Five specialist reports are complete. Their conclusions, condensed — the detail is in the
-transcript, not in this repo.
+Five specialist reports were produced; most of their conclusions are now implemented (phase 16)
+and the reasoning is recorded in that phase doc rather than here. What remains unbuilt:
 
-**Cheats.** Ship GB/GBC only: Game Genie (9- and 6-char) and GameShark types `01`/`9b`, typed in
-by the user, auto-detected by shape, **patched on read — never by mutating the ROM image**.
+**Gamepad remapping.** The pad map is still a hardcoded standard-layout index table, which is a
+latent bug for any controller the browser does not report as `mapping: "standard"` — indices mean
+nothing there and buttons land on the wrong actions. Hot-plug listeners are also missing, so an
+already-connected pad is invisible in Safari and Firefox until a button is pressed. The
+`InputSource` shape is designed to absorb this without churn.
 
-> That last point is load-bearing. `saveKey` is `title:globalChecksum:romLength` and the checksum
-> sums every ROM byte; it is the IndexedDB key for both battery saves and every save-state slot,
-> and `BaseCartridge.load` keeps the caller's array **by reference**. Patching the ROM in place
-> would change the save key and the player's save would appear to vanish.
+**Multi-line cheat entry**, and a "did this code actually match?" indicator. BGB shows whether a
+Game Genie compare hit, which is the best diagnostic in any cheat UI — without it a code for the
+wrong ROM revision silently does nothing and the emulator looks broken.
 
-Hook goes in `Mmu.readDirect()` — shared by OAM DMA and HDMA, so a DMA sourcing from ROM sees
-patched bytes, which is what the hardware does. Benchmarked design: one integer guard, then a 4 KB
-bitset, then a short scan on a hit — **+0.06 ns/read with no cheats active**. A linear scan was
-the worst option measured, and `Map.get` 35% worse than the bitset.
-
-Performance guard should be an **exact counter** (zero comparisons when empty), not a timing
-assertion — the noise floor of an A/B wall-clock test was measured at ±10% per pair.
-
-Never build a remote cheat lookup: it would send a fingerprint of the user's ROM.
-
-**Controller settings.** Rewrite `ControlsPanel` in place — it already owns the Controls tab, no
-new tab needed. The primary control must be a native `<select>`, with "Detect" as an enhancement:
-under a screen reader in browse mode, single letters are navigation commands and never reach our
-handler, so press-any-key capture *cannot* work for those users. Watch the activating-key trap —
-capture starts on Enter or Space, and Enter is the default Start binding.
-
----
+**Touch-control customisation.** Deferred deliberately: nobody has run this on a real phone, and
+making an unvalidated layout configurable ships the problem to the player instead of fixing it.
 
 ## Suggested next steps
 
@@ -164,9 +160,7 @@ capture starts on Enter or Space, and Enter is the default Start binding.
    intermediate commits are not individually buildable, only the tip is. Squashing before the
    first public push is easier now than later.
 2. **Settle the licence and the A/B default** — both block or shape work that is otherwise ready.
-3. **Keyboard remapping**, in this order: `InputLatch` is already done; then `bindings.ts` v2 with
-   the migration (highest risk to user data, so it lands with tests before any UI), then the
-   capture flow, then the panel.
-4. **Cheats**, once the licence is settled.
-5. **Mid-scanline PPU effects** — the largest remaining accuracy gap, and the one with the most
-   diagnosis already banked.
+3. **Mid-scanline PPU effects** — the largest remaining accuracy gap, and the one with the most
+   diagnosis already banked. Two wrong hypotheses are already eliminated.
+4. **Gamepad remapping**, which is the last obviously-missing input feature.
+5. **GBA cheats**, once the licence is settled.

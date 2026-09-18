@@ -500,6 +500,18 @@ class EmulatorSession {
     };
   }
 
+  /**
+   * Stops player input reaching the game, for the duration of a binding capture.
+   *
+   * Every source, not just the keyboard: a rebind should not be interrupted by a thumb on
+   * the on-screen pad or a resting gamepad stick.
+   */
+  setInputSuppressed(suppressed: boolean): void {
+    this.keyboard.setSuppressed(suppressed);
+    this.input.releaseAll();
+    this.gamepad.releaseAll();
+  }
+
   getBindings(): Bindings {
     return this.keyboard.getBindings();
   }

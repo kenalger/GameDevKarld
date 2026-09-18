@@ -1,1 +1,1 @@
-{"version":3,"file":"ControlsPanel.d.ts","sourceRoot":"","sources":["../../src/components/ControlsPanel.tsx"],"names":[],"mappings":"AAgBA;;;;;;GAMG;AACH,wBAAgB,aAAa,IAAI,KAAK,CAAC,GAAG,CAAC,OAAO,CAuCjD"}
+{"version":3,"file":"ControlsPanel.d.ts","sourceRoot":"","sources":["../../src/components/ControlsPanel.tsx"],"names":[],"mappings":"AA+BA;;;;;;;;;;;GAWG;AACH,wBAAgB,aAAa,IAAI,KAAK,CAAC,GAAG,CAAC,OAAO,CAiLjD"}

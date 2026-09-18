@@ -29,6 +29,7 @@ Every phase has a **hard exit gate** — a test result, not an opinion. `emu-acc
 | 13 | [GBA — Memory & DMA](phase-13-gba-memory-dma.md) | `gb-memory-engineer` | ✅ **Done** — memory/arm/thumb pass on the real bus |
 | 14 | [GBA — Video](phase-14-gba-video.md) | `gb-ppu-engineer` | ✅ **Done** — all modes, affine BG + OBJ, windows, mosaic, blending |
 | 15 | [GBA — Audio & Compatibility](phase-15-gba-audio-compat.md) | `gb-audio-io-engineer` | ⚠️ **Audio + saves done, sweep in place** — no commercial-ROM testing |
+| 16 | [Cheats & Controls](phase-16-cheats-controls.md) | `gb-memory-engineer` | ✅ **Done (GB/GBC)** — codes + rebinding; GBA cheats deferred |
 
 ## Milestones
 

@@ -23,6 +23,8 @@ function isTyping(target: EventTarget | null): boolean {
 export class KeyboardInput {
   private bindings: Bindings = DEFAULT_BINDINGS;
   private attached = false;
+  /** True while a rebind is capturing, so keystrokes reach the UI and not the game. */
+  private suppressed = false;
 
   constructor(private readonly latch: InputLatch) {}
 
@@ -35,6 +37,12 @@ export class KeyboardInput {
 
   getBindings(): Bindings {
     return this.bindings;
+  }
+
+  /** Releasing on the way in AND out: a key held across the change must not stick. */
+  setSuppressed(suppressed: boolean): void {
+    this.suppressed = suppressed;
+    this.latch.releaseAll(SOURCE.keyboard);
   }
 
   attach(target: Window = window): () => void {
@@ -65,6 +73,7 @@ export class KeyboardInput {
     // debugger's address box and Enter could not submit it — the key reached the game
     // instead and preventDefault() ate the character.
     if (isTyping(event.target)) return;
+    if (this.suppressed) return;
 
     const button = this.bindings[event.code];
     if (button === undefined) return;
