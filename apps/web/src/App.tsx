@@ -103,11 +103,37 @@ export function App(): React.JSX.Element {
       </ErrorBoundary>
 
       {!loaded && (
-        <p className="empty-state">
-          <strong>No ROM loaded</strong>
-          Choose a Game Boy ROM from your device to begin. The file is read in your browser and is
-          never sent anywhere.
-        </p>
+        <div className="empty-state">
+          <strong>Choose a system</strong>
+          <p>
+            The cartridge header says which system it needs, so Auto is right almost always. Pick a
+            system to run a Game Boy Color cartridge in original Game Boy mode, which many support
+            and which looks entirely different.
+          </p>
+          <div className="system-picker" role="radiogroup" aria-label="System">
+            {(
+              [
+                ['auto', 'Auto', 'Read it from the cartridge'],
+                ['GB', 'Game Boy', 'Original and Color'],
+                ['GBA', 'Game Boy Advance', '32-bit, 240×160'],
+              ] as const
+            ).map(([value, title, note]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={snapshot.systemPreference === value}
+                onClick={() => session.setSystemPreference(value)}
+              >
+                <b>{title}</b>
+                <small>{note}</small>
+              </button>
+            ))}
+          </div>
+          <p className="hint">
+            Then choose a ROM below. The file is read in your browser and is never sent anywhere.
+          </p>
+        </div>
       )}
 
       <div className="transport" role="group" aria-label="Emulator controls">
@@ -141,6 +167,22 @@ export function App(): React.JSX.Element {
         >
           Load State
         </button>
+        <label className="speed">
+          <span>Speed</span>
+          <select
+            value={snapshot.speed}
+            disabled={!loaded}
+            onChange={(event) => session.setSpeed(Number(event.target.value))}
+            aria-label="Emulation speed"
+          >
+            <option value={0.25}>0.25x</option>
+            <option value={0.5}>0.5x</option>
+            <option value={1}>1x</option>
+            <option value={2}>2x</option>
+            <option value={4}>4x</option>
+            <option value={8}>8x</option>
+          </select>
+        </label>
         <button type="button" onClick={toggleMute} disabled={!loaded} aria-pressed={muted}>
           {muted ? 'Unmute' : 'Mute'}
         </button>

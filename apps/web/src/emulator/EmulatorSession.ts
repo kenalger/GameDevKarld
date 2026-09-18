@@ -10,6 +10,25 @@ import { stateStore, SLOT_COUNT, type StateSlot } from '../storage/StateStore.js
 import { cheatStore, type StoredCheat } from '../storage/CheatStore.js';
 import { decodeCheat, CheatParseError, type ParsedCheat } from '@webboy/emulator';
 
+/**
+ * Which system to run. 'auto' reads the cartridge header, which is right almost always.
+ *
+ * The override exists for the one case that genuinely needs it: a CGB-compatible cartridge
+ * can also run on original Game Boy hardware, and looks entirely different doing so.
+ */
+export type SystemPreference = 'auto' | 'GB' | 'GBA';
+
+const SYSTEM_KEY = 'webboy.system.v1';
+
+function loadSystemPreference(): SystemPreference {
+  try {
+    const stored = localStorage.getItem(SYSTEM_KEY);
+    return stored === 'GB' || stored === 'GBA' ? stored : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
 /** Slot 0 doubles as the quick slot, so the transport and the panel agree. */
 const QUICK_SLOT = 0;
 
@@ -21,6 +40,12 @@ export interface SessionSnapshot {
   readonly savesRestored: boolean;
   /** Whether the quick slot holds a state, so the Load button can disable itself. */
   readonly hasQuickState: boolean;
+  /** Emulation speed multiplier. 1 is real time. */
+  readonly speed: number;
+  /** Which system the player asked for. 'auto' trusts the cartridge header. */
+  readonly systemPreference: SystemPreference;
+  /** Which core is actually running, once a cartridge is in. */
+  readonly activeSystem: string | null;
   readonly error: string | null;
 }
 
@@ -51,6 +76,9 @@ class EmulatorSession {
     error: null,
     savesRestored: false,
     hasQuickState: false,
+    speed: 1,
+    systemPreference: loadSystemPreference(),
+    activeSystem: null,
   };
   private rafId: number | null = null;
   /** True when the tab-hide handler paused us, so returning may resume automatically. */
@@ -107,10 +135,25 @@ class EmulatorSession {
     if (previous) void this.saves.flush(previous);
 
     try {
-      this.manager.loadRom(data);
+      const preference = this.snapshot.systemPreference;
+      this.manager.loadRom(data, preference === 'auto' ? undefined : preference);
+
+      // Say so when the override disagrees with the cartridge, rather than silently
+      // honouring it: "I picked Advance and my Game Boy game broke" must not be a mystery.
+      const detected = this.manager.getDetectedSystem();
+      const active = this.manager.getActiveSystem();
+      const mismatch =
+        preference !== 'auto' && detected !== null && detected !== active
+          ? `This cartridge reports ${detected}, but you chose ${preference === 'GB' ? 'Game Boy' : 'Game Boy Advance'}. Switch to Auto if it misbehaves.`
+          : null;
       this.frameCount = 0;
       this.pacer.reset();
-      this.update({ status: 'running', romName: name, error: null });
+      this.update({
+        status: 'running',
+        romName: name,
+        error: mismatch,
+        activeSystem: this.manager.getActiveSystem(),
+      });
       void this.refreshQuickState();
       void this.restoreCheats();
       void this.restoreSave();
@@ -424,7 +467,7 @@ class EmulatorSession {
   private async startAudio(): Promise<void> {
     try {
       await this.audio.start();
-      this.manager.setAudioSink(this.audio.sampleRate, (left, right) =>
+      this.manager.setAudioSink(this.audio.sampleRate / this.pacer.speed, (left, right) =>
         this.audio.push(left, right),
       );
     } catch (cause) {
@@ -433,6 +476,33 @@ class EmulatorSession {
         error: `Sound is unavailable: ${cause instanceof Error ? cause.message : String(cause)}`,
       });
     }
+  }
+
+  /**
+   * Runs the game faster or slower than real time.
+   *
+   * The audio output rate is rescaled by the same factor. Without that, running at 2x
+   * produces samples twice as fast as the device drains them, the ring buffer overflows
+   * and pushes are dropped — audible as constant crackle. Rescaling keeps the buffer
+   * balanced and shifts the pitch instead, which is what fast-forward has always sounded
+   * like and is the honest signal that the game is not running at normal speed.
+   */
+  setSpeed(multiplier: number): void {
+    this.pacer.setSpeed(multiplier);
+    const speed = this.pacer.speed;
+    this.manager.setAudioSink(this.audio.sampleRate / speed, (left, right) =>
+      this.audio.push(left, right),
+    );
+    this.update({ speed });
+  }
+
+  setSystemPreference(preference: SystemPreference): void {
+    try {
+      localStorage.setItem(SYSTEM_KEY, preference);
+    } catch {
+      // A remembered preference is a convenience, never a requirement.
+    }
+    this.update({ systemPreference: preference });
   }
 
   setMuted(muted: boolean): void {

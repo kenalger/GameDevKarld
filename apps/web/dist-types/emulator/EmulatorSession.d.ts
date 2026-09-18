@@ -3,6 +3,13 @@ import { type Bindings } from './input/bindings.js';
 import { AudioOutput } from '../audio/AudioOutput.js';
 import { type StateSlot } from '../storage/StateStore.js';
 import { type StoredCheat } from '../storage/CheatStore.js';
+/**
+ * Which system to run. 'auto' reads the cartridge header, which is right almost always.
+ *
+ * The override exists for the one case that genuinely needs it: a CGB-compatible cartridge
+ * can also run on original Game Boy hardware, and looks entirely different doing so.
+ */
+export type SystemPreference = 'auto' | 'GB' | 'GBA';
 export type SessionStatus = 'empty' | 'running' | 'paused';
 export interface SessionSnapshot {
     readonly status: SessionStatus;
@@ -10,6 +17,12 @@ export interface SessionSnapshot {
     readonly savesRestored: boolean;
     /** Whether the quick slot holds a state, so the Load button can disable itself. */
     readonly hasQuickState: boolean;
+    /** Emulation speed multiplier. 1 is real time. */
+    readonly speed: number;
+    /** Which system the player asked for. 'auto' trusts the cartridge header. */
+    readonly systemPreference: SystemPreference;
+    /** Which core is actually running, once a cartridge is in. */
+    readonly activeSystem: string | null;
     readonly error: string | null;
 }
 /**
@@ -122,6 +135,17 @@ declare class EmulatorSession {
     /** Called from the first input after a gesture-less resume. Cheap and idempotent. */
     private wakeAudioOnGesture;
     private startAudio;
+    /**
+     * Runs the game faster or slower than real time.
+     *
+     * The audio output rate is rescaled by the same factor. Without that, running at 2x
+     * produces samples twice as fast as the device drains them, the ring buffer overflows
+     * and pushes are dropped — audible as constant crackle. Rescaling keeps the buffer
+     * balanced and shifts the pitch instead, which is what fast-forward has always sounded
+     * like and is the honest signal that the game is not running at normal speed.
+     */
+    setSpeed(multiplier: number): void;
+    setSystemPreference(preference: SystemPreference): void;
     setMuted(muted: boolean): void;
     getAudioStats(): import("../audio/AudioOutput.js").AudioStats;
     /** Surface a user-facing problem (bad file, unreadable ROM) without touching emulation. */

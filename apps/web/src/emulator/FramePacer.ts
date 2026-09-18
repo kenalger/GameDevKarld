@@ -8,13 +8,20 @@
  * Pure and synchronous on purpose — this is the piece that must be unit-testable.
  */
 export class FramePacer {
-  /** Never run more than this many emulated frames for one tick. */
+  /** Never run more than this many emulated frames for one tick, at 1x speed. */
   static readonly MAX_FRAMES_PER_TICK = 4;
+
+  /** Bounds on the speed multiplier. Beyond 8x a 60Hz tick cannot keep up anyway. */
+  static readonly MIN_SPEED = 0.25;
+  static readonly MAX_SPEED = 8;
 
   /** A gap larger than this means the tab was hidden or the thread was blocked. */
   static readonly MAX_DELTA_MS = 250;
 
-  private readonly msPerFrame: number;
+  private readonly baseMsPerFrame: number;
+  private msPerFrame: number;
+  private maxFramesPerTick = FramePacer.MAX_FRAMES_PER_TICK;
+  private speedMultiplier = 1;
   private accumulator = 0;
   private lastTime: number | null = null;
 
@@ -22,7 +29,39 @@ export class FramePacer {
     if (!(framesPerSecond > 0)) {
       throw new RangeError(`framesPerSecond must be positive, got ${framesPerSecond}`);
     }
-    this.msPerFrame = 1000 / framesPerSecond;
+    this.baseMsPerFrame = 1000 / framesPerSecond;
+    this.msPerFrame = this.baseMsPerFrame;
+  }
+
+  get speed(): number {
+    return this.speedMultiplier;
+  }
+
+  /**
+   * Runs the game faster or slower than real time.
+   *
+   * Implemented by shrinking the per-frame budget rather than by running extra frames on
+   * the side, so everything downstream — the sticky input latch, save states, the frame
+   * counter — behaves exactly as it does at 1x. Emulation stays deterministic; only how
+   * often it is asked to step changes.
+   *
+   * The per-tick cap scales too. It exists to stop a death spiral after a hitch, and a
+   * fixed 4 would silently cap 4x and above at real time on a 60Hz display — the setting
+   * would appear to do nothing.
+   */
+  setSpeed(multiplier: number): void {
+    const clamped = Math.min(
+      FramePacer.MAX_SPEED,
+      Math.max(FramePacer.MIN_SPEED, Number.isFinite(multiplier) ? multiplier : 1),
+    );
+    this.speedMultiplier = clamped;
+    this.msPerFrame = this.baseMsPerFrame / clamped;
+    this.maxFramesPerTick = Math.max(
+      FramePacer.MAX_FRAMES_PER_TICK,
+      Math.ceil(FramePacer.MAX_FRAMES_PER_TICK * clamped),
+    );
+    // Drop the backlog: time accumulated at the old rate means nothing at the new one.
+    this.accumulator = 0;
   }
 
   /**
@@ -52,13 +91,13 @@ export class FramePacer {
     this.accumulator += delta;
 
     let frames = 0;
-    while (this.accumulator >= this.msPerFrame && frames < FramePacer.MAX_FRAMES_PER_TICK) {
+    while (this.accumulator >= this.msPerFrame && frames < this.maxFramesPerTick) {
       this.accumulator -= this.msPerFrame;
       frames++;
     }
 
     // Hit the cap: drop the backlog instead of carrying debt forever.
-    if (frames === FramePacer.MAX_FRAMES_PER_TICK) {
+    if (frames === this.maxFramesPerTick) {
       this.accumulator = 0;
     }
 

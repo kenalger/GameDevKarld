@@ -875,3 +875,77 @@ input[type='text']:focus {
   font-size: 12px;
   color: var(--signal-text);
 }
+
+/* Speed selector, sitting in the transport row alongside the key-shaped controls. */
+.speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.speed span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.speed select {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--key-face);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 8px 6px;
+  cursor: pointer;
+}
+.speed select:hover:not(:disabled) {
+  background: var(--key-hover);
+}
+.speed select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   System picker. Three plates, one selected — the choice before a cartridge.
+   --------------------------------------------------------------------------- */
+.system-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-block: 16px;
+}
+.system-picker button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 10px 14px;
+  min-width: 150px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.system-picker b {
+  font-size: 13px;
+  font-weight: 700;
+}
+.system-picker small {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.system-picker button[aria-checked='true'] {
+  background: var(--signal);
+  color: var(--signal-ink);
+}
+.system-picker button[aria-checked='true'] small {
+  color: var(--signal-ink);
+  opacity: 0.8;
+}
+.system-picker button[aria-checked='true']:hover {
+  background: color-mix(in srgb, var(--signal) 88%, #000);
+}
