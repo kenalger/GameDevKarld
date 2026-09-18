@@ -69,6 +69,7 @@ export function App(): React.JSX.Element {
   }, []);
 
   const loaded = snapshot.status !== 'empty';
+  const running = snapshot.status === 'running';
 
   return (
     <div className="app" ref={appRef}>
@@ -136,65 +137,89 @@ export function App(): React.JSX.Element {
         </div>
       )}
 
-      <div className="transport" role="group" aria-label="Emulator controls">
-        <button
-          type="button"
-          onClick={() => session.pause()}
-          disabled={snapshot.status !== 'running'}
-        >
-          Pause
-        </button>
-        <button
-          type="button"
-          onClick={() => session.resume()}
-          disabled={snapshot.status !== 'paused'}
-        >
-          Resume
-        </button>
-        <button type="button" onClick={() => session.reset()} disabled={!loaded}>
-          Reset
-        </button>
-        {/* Quick save/load live here rather than only in the States tab: a feature you
-            cannot find is a feature you do not have. The panel keeps the full slot list. */}
-        <button type="button" onClick={() => void session.quickSave()} disabled={!loaded}>
-          Save State
-        </button>
-        <button
-          type="button"
-          onClick={() => void session.quickLoad()}
-          disabled={!loaded || !snapshot.hasQuickState}
-          title={snapshot.hasQuickState ? 'Load the quick slot' : 'Nothing saved yet'}
-        >
-          Load State
-        </button>
-        <label className="speed">
-          <span>Speed</span>
-          <select
-            value={snapshot.speed}
+      {/* Grouped, not one flat row of eight equal buttons.
+
+          Reference: EmulatorJS's control bar, whose first control is a single
+          `playPause` toggle and which pairs mute/unmute and enterFullscreen /
+          exitFullscreen the same way. RetroArch and mGBA go further and show no
+          bar at all — everything lives behind a quick menu on F1. We keep a
+          visible bar, because twice in this project the actual bug turned out to
+          be a working feature nobody could find, but it is grouped by what each
+          control does rather than laid out in the order it was written.
+
+          Pause and Resume were two buttons, which meant one of them was always
+          dead: Resume sat greyed out for the entire time a game was running. */}
+      <div className="controlbar" role="group" aria-label="Emulator controls">
+        <div className="controlbar-group">
+          <button
+            type="button"
+            className="primary"
+            onClick={() => (running ? session.pause() : session.resume())}
             disabled={!loaded}
-            onChange={(event) => session.setSpeed(Number(event.target.value))}
-            aria-label="Emulation speed"
           >
-            <option value={0.25}>0.25x</option>
-            <option value={0.5}>0.5x</option>
-            <option value={1}>1x</option>
-            <option value={2}>2x</option>
-            <option value={4}>4x</option>
-            <option value={8}>8x</option>
-          </select>
-        </label>
-        <button type="button" onClick={toggleMute} disabled={!loaded} aria-pressed={muted}>
-          {muted ? 'Unmute' : 'Mute'}
-        </button>
-        <button
-          type="button"
-          disabled={!loaded}
-          onClick={() => {
-            if (appRef.current) void session.toggleFullscreen(appRef.current);
-          }}
-        >
-          Fullscreen
-        </button>
+            {running ? 'Pause' : 'Resume'}
+          </button>
+        </div>
+
+        {/* Quick save/load live here rather than only in the States tab: a
+            feature you cannot find is a feature you do not have. The panel
+            keeps the full slot list. */}
+        <div className="controlbar-group" role="group" aria-label="Save state">
+          <button type="button" onClick={() => void session.quickSave()} disabled={!loaded}>
+            Save State
+          </button>
+          <button
+            type="button"
+            onClick={() => void session.quickLoad()}
+            disabled={!loaded || !snapshot.hasQuickState}
+            title={snapshot.hasQuickState ? 'Load the quick slot' : 'Nothing saved yet'}
+          >
+            Load State
+          </button>
+        </div>
+
+        <div className="controlbar-group">
+          <label className="speed">
+            <span>Speed</span>
+            <select
+              value={snapshot.speed}
+              disabled={!loaded}
+              onChange={(event) => session.setSpeed(Number(event.target.value))}
+              aria-label="Emulation speed"
+            >
+              <option value={0.25}>0.25x</option>
+              <option value={0.5}>0.5x</option>
+              <option value={1}>1x</option>
+              <option value={2}>2x</option>
+              <option value={4}>4x</option>
+              <option value={8}>8x</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="controlbar-group" role="group" aria-label="Output">
+          <button type="button" onClick={toggleMute} disabled={!loaded} aria-pressed={muted}>
+            {muted ? 'Unmute' : 'Mute'}
+          </button>
+          <button
+            type="button"
+            disabled={!loaded}
+            onClick={() => {
+              if (appRef.current) void session.toggleFullscreen(appRef.current);
+            }}
+          >
+            Fullscreen
+          </button>
+        </div>
+
+        {/* Last, and alone. Reset is destructive and rare, and it previously sat
+            immediately beside Save State — one slip from throwing away the run
+            you meant to preserve. */}
+        <div className="controlbar-group" data-role="reset">
+          <button type="button" onClick={() => session.reset()} disabled={!loaded}>
+            Reset
+          </button>
+        </div>
       </div>
 
       {/* On desktop the on-screen pad is hidden, so the keyboard is the only way in.

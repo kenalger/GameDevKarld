@@ -266,11 +266,72 @@ body {
   flex-wrap: wrap;
   gap: 6px;
 }
-.app > .transport {
+
+/* ---------------------------------------------------------------------------
+   Control bar — grouped, not one flat row of eight equal buttons.
+
+   The old row was `.transport` with eight equal children, centred and capped at
+   the device width. Eight buttons do not fit in 620px, so it wrapped mid-row and
+   orphaned Mute and Fullscreen onto a second line, centred under nothing, with
+   no visible relationship to anything above them. That is what "cramped" was.
+
+   Three changes, in order of how much they did:
+
+   1. Pause and Resume became ONE toggle. Two buttons meant one was always dead.
+      EmulatorJS's bar does the same — its first control is `playPause`, and it
+      pairs mute/unmute and enterFullscreen/exitFullscreen rather than showing
+      both halves at once.
+   2. The groups are the flex items, so a wrap now breaks BETWEEN groups and
+      never inside one. Related controls stay together at every width.
+   3. Separation is proximity — 6px inside a group, 20px between — not a new
+      kind of line. This file has exactly one rule and it is horizontal;
+      vertical dividers between groups would be a second line type earning
+      nothing that whitespace does not already do.
+
+   Centred, NOT with output controls pushed right. The media-player convention
+   puts volume and fullscreen at the right edge, but that convention is for a
+   bar spanning the full width of a video. This bar is a centred cluster under a
+   centred device, and `margin-left: auto` on a wrapping flex row does something
+   ugly the moment it wraps: the pushed group lands alone against the right edge
+   while the row above stays left. Centring survives every width without
+   knowing any button's exact text width — which matters here, because nobody
+   can measure this layout in a browser yet.
+   --------------------------------------------------------------------------- */
+.controlbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
+  gap: 10px 20px;
+  width: 100%;
   max-width: var(--device);
   margin-inline: auto;
-  width: 100%;
+}
+.controlbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Reset is destructive and rarely wanted, so it is last and quiet — a plain
+   surface that only fills on hover. It previously sat directly beside Save
+   State at identical weight, which put "throw the run away" one slip from
+   "keep the run". */
+.controlbar-group[data-role='reset'] button {
+  background: transparent;
+  color: var(--ink-2);
+}
+.controlbar-group[data-role='reset'] button:hover:not(:disabled) {
+  background: var(--key-face);
+  color: var(--ink);
+}
+
+/* Narrow: tighten the group gap so a phone gets three short centred rows
+   rather than five ragged ones. */
+@media (max-width: 560px) {
+  .controlbar {
+    gap: 8px 14px;
+  }
 }
 
 button {
