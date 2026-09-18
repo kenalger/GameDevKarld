@@ -27,6 +27,13 @@
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
 
+# Same reasoning, and easier to miss: the AudioWorklet is loaded by a fixed, UNHASHED
+# path, unlike everything under /assets/. Without this a browser can heuristically cache
+# it and keep running the previous deploy's audio processor against new main-thread code
+# — which would surface as crackle or silence, and look like an emulator bug.
+/webboy-audio-worklet.js
+  Cache-Control: public, max-age=0, must-revalidate
+
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer

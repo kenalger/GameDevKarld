@@ -1,7 +1,7 @@
 # Deploying
 
 WebBoy is a static site. There is no backend, no database and no API — the emulator runs
-entirely in the browser, and the build is ten files totalling under 500 KB. Any static host
+entirely in the browser, and the build is eleven files totalling under 500 KB. Any static host
 serves it; Cloudflare Pages is a good fit and has a free tier.
 
 ## Read this first
@@ -19,7 +19,7 @@ to a preview URL, open it, and check it works before pointing a real domain at i
 
 | | |
 |---|---|
-| Output | `apps/web/dist`, 10 files, ~492 KB |
+| Output | `apps/web/dist`, 11 files, 496 KB (JS 397 KB, 120 KB gzipped) |
 | Third-party requests at runtime | **none** — fonts are self-hosted, there is no CDN, no analytics |
 | Backend | none |
 | Secrets / env vars | none |
