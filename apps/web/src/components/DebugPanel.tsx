@@ -54,7 +54,7 @@ export function DebugPanel(): React.JSX.Element {
 
   return (
     <section className="panel">
-      <h2 className="panel-title">Debug</h2>
+      <h3 className="panel-title">Debug</h3>
 
       <pre className="regs" ref={registersRef} aria-label="CPU registers" />
 

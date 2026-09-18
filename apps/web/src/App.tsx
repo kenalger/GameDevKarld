@@ -1,28 +1,20 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { session } from './emulator/EmulatorSession.js';
+import { downloadBytes } from './util/download.js';
 import { Display } from './components/Display.js';
 import { RomPicker } from './components/RomPicker.js';
 import { StatusBar } from './components/StatusBar.js';
 import { Disclaimer } from './components/Disclaimer.js';
-import { ControlsPanel } from './components/ControlsPanel.js';
-import { SavesPanel } from './components/SavesPanel.js';
-import { StatesPanel } from './components/StatesPanel.js';
-import { RomInfoPanel } from './components/RomInfoPanel.js';
 import { TouchControls } from './components/TouchControls.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
-import { DebugPanel } from './components/DebugPanel.js';
 import { KeyLegend } from './components/KeyLegend.js';
-import { CheatsPanel } from './components/CheatsPanel.js';
-
-const TABS = ['Cartridge', 'Controls', 'Saves', 'States', 'Cheats', 'Debug'] as const;
-type Tab = (typeof TABS)[number];
+import { SettingsDrawer } from './components/SettingsDrawer.js';
 
 export function App(): React.JSX.Element {
   // Status changes rarely (load / pause / resume / error), so it may live in a store.
   // Nothing that changes per frame is allowed through here.
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot);
-  const [tab, setTab] = useState<Tab>('Cartridge');
-  const [muted, setMuted] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const appRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,24 +40,9 @@ export function App(): React.JSX.Element {
     session.reportError(message);
   }, []);
 
-  const toggleMute = useCallback(() => {
-    setMuted((current) => {
-      session.setMuted(!current);
-      return !current;
-    });
-  }, []);
-
   const exportState = useCallback(() => {
     const state = session.exportState();
-    if (!state) return;
-    const bytes = new Uint8Array(state.data.length);
-    bytes.set(state.data);
-    const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = state.filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (state) downloadBytes(state.data, state.filename);
   }, []);
 
   const loaded = snapshot.status !== 'empty';
@@ -132,23 +109,30 @@ export function App(): React.JSX.Element {
             ))}
           </div>
           <p className="hint">
-            Then choose a ROM below. The file is read in your browser and is never sent anywhere.
+            Then load a ROM with the button above. The file is read in your browser and is never
+            sent anywhere.
           </p>
         </div>
       )}
 
-      {/* Grouped, not one flat row of eight equal buttons.
+      {/* Quick controls only. Everything that is configuration is behind Settings.
 
-          Reference: EmulatorJS's control bar, whose first control is a single
-          `playPause` toggle and which pairs mute/unmute and enterFullscreen /
-          exitFullscreen the same way. RetroArch and mGBA go further and show no
-          bar at all — everything lives behind a quick menu on F1. We keep a
-          visible bar, because twice in this project the actual bug turned out to
-          be a working feature nobody could find, but it is grouped by what each
-          control does rather than laid out in the order it was written.
+          The bar used to carry seven controls and was followed by a six-tab strip with
+          every panel expanded inline, permanently, while you played. No emulator that was
+          checked does that: the persistent surface is a thin menu bar (mGBA, ares, Mesen,
+          SameBoy) or nothing at all (RetroArch, BGB, EmulatorJS, Delta). What survives
+          here is what those references keep within one action of the game — pause, save
+          state, load state, speed, fullscreen — plus the door to the rest.
 
-          Pause and Resume were two buttons, which meant one of them was always
-          dead: Resume sat greyed out for the entire time a game was running. */}
+          Mute moved to Settings › Audio and Reset to Settings › Emulation. Reset in
+          particular was one slip away from Save State, which is a bad place for "throw
+          the run away".
+
+          DELIBERATELY NOT AUTO-HIDING, unlike EmulatorJS, which fades its bar out after
+          3000ms. Three separate bugs in this project have turned out to be a working
+          feature nobody could find, and nobody can open a browser here to check what a
+          hidden bar actually does. A bar that is always there is the safe side of that
+          trade. */}
       <div className="controlbar" role="group" aria-label="Emulator controls">
         <div className="controlbar-group">
           <button
@@ -161,9 +145,8 @@ export function App(): React.JSX.Element {
           </button>
         </div>
 
-        {/* Quick save/load live here rather than only in the States tab: a
-            feature you cannot find is a feature you do not have. The panel
-            keeps the full slot list. */}
+        {/* Quick save/load live here rather than only in the panel: a feature you cannot
+            find is a feature you do not have. The panel keeps the full slot list. */}
         <div className="controlbar-group" role="group" aria-label="Save state">
           <button type="button" onClick={() => void session.quickSave()} disabled={!loaded}>
             Save State
@@ -197,10 +180,7 @@ export function App(): React.JSX.Element {
           </label>
         </div>
 
-        <div className="controlbar-group" role="group" aria-label="Output">
-          <button type="button" onClick={toggleMute} disabled={!loaded} aria-pressed={muted}>
-            {muted ? 'Unmute' : 'Mute'}
-          </button>
+        <div className="controlbar-group">
           <button
             type="button"
             disabled={!loaded}
@@ -210,51 +190,32 @@ export function App(): React.JSX.Element {
           >
             Fullscreen
           </button>
-        </div>
 
-        {/* Last, and alone. Reset is destructive and rare, and it previously sat
-            immediately beside Save State — one slip from throwing away the run
-            you meant to preserve. */}
-        <div className="controlbar-group" data-role="reset">
-          <button type="button" onClick={() => session.reset()} disabled={!loaded}>
-            Reset
+          {/* Never disabled. Bindings, the system preference and developer mode are all
+              worth reaching before a cartridge is in, and the complaint that started this
+              was that there was no way in at all. */}
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={settingsOpen}
+            onClick={() => {
+              session.menuOpened();
+              setSettingsOpen(true);
+            }}
+          >
+            Settings
           </button>
         </div>
       </div>
 
       {/* On desktop the on-screen pad is hidden, so the keyboard is the only way in.
-          Saying so here is the difference between a game and an apparently frozen one. */}
+          Saying so here is the difference between a game and an apparently frozen one.
+          This is information, not configuration, so it stays on the page. */}
       {loaded && <KeyLegend />}
 
-      <StatusBar />
-
-      {loaded && (
-        <>
-          <hr className="rule" />
-          <div className="tabs" role="tablist" aria-label="Panels">
-            {TABS.map((name) => (
-              <button
-                key={name}
-                type="button"
-                role="tab"
-                aria-selected={tab === name}
-                onClick={() => setTab(name)}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-          <div role="tabpanel" aria-label={tab}>
-            {tab === 'Cartridge' && <RomInfoPanel />}
-            {tab === 'Controls' && <ControlsPanel />}
-            {tab === 'Saves' && <SavesPanel restored={snapshot.savesRestored} />}
-            {tab === 'States' && <StatesPanel />}
-            {tab === 'Cheats' && <CheatsPanel />}
-            {/* Mounted only when open, so a closed debugger costs the emulator nothing. */}
-            {tab === 'Debug' && <DebugPanel />}
-          </div>
-        </>
-      )}
+      {/* Opt-in, and off by default — RetroArch ships `DEFAULT_FPS_SHOW false` for the
+          same reason. Unmounting it also stops its 250ms interval. */}
+      {snapshot.showPerformance && <StatusBar />}
 
       <p aria-live="polite" className="visually-hidden">
         {snapshot.status === 'running' && snapshot.romName
@@ -265,6 +226,19 @@ export function App(): React.JSX.Element {
       </p>
 
       <Disclaimer />
+
+      {/* Mounted only while open: the panels inside it, including the debugger, do not
+          exist when it is closed. Rendered inside `.app` on purpose — `.app` is the
+          element that goes fullscreen, and a drawer portalled to the body would be
+          invisible for the whole time the app is fullscreen. */}
+      {settingsOpen && (
+        <SettingsDrawer
+          onClose={() => {
+            setSettingsOpen(false);
+            session.menuClosed();
+          }}
+        />
+      )}
     </div>
   );
 }

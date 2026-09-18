@@ -52,7 +52,7 @@ export function CheatsPanel(): React.JSX.Element {
 
   return (
     <section className="panel">
-      <h2 className="panel-title">Cheats</h2>
+      <h3 className="panel-title">Cheats</h3>
 
       {cheats.length === 0 ? (
         <p className="empty-state">
@@ -93,9 +93,9 @@ export function CheatsPanel(): React.JSX.Element {
       )}
 
       <form onSubmit={(event) => void handleAdd(event)} noValidate>
-        <h3 className="panel-title" style={{ marginTop: 'var(--gap)' }}>
+        <h4 className="panel-title" style={{ marginTop: 'var(--gap)' }}>
           Add a code
-        </h3>
+        </h4>
 
         <div className="cheat-form">
           <label htmlFor="cheat-code">Code</label>

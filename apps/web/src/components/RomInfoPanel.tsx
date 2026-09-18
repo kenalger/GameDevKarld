@@ -30,7 +30,7 @@ export function RomInfoPanel(): React.JSX.Element | null {
 
   return (
     <section className="panel">
-      <h2 className="panel-title">Cartridge</h2>
+      <h3 className="panel-title">Cartridge</h3>
       <dl className="info">
         {rows.map(([label, value]) => (
           <div key={label}>

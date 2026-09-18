@@ -183,3 +183,105 @@ describe('tab switching', () => {
     expect(session.getSnapshot().status).toBe('paused');
   });
 });
+
+/**
+ * Session-wide switches belong in the snapshot, not in a component's useState.
+ *
+ * `muted` used to live in App.tsx while `setMuted` only touched the gain node, so nothing
+ * else in the app could read it, show it or restore it — the settings drawer and the
+ * control bar could not have agreed on the state even if both had shown it.
+ */
+describe('session settings', () => {
+  it('PUTS MUTE IN THE SNAPSHOT and notifies subscribers', async () => {
+    const { session } = await import('./EmulatorSession.js');
+    expect(session.getSnapshot().muted).toBe(false);
+
+    let notified = 0;
+    const unsubscribe = session.subscribe(() => {
+      notified += 1;
+    });
+
+    session.setMuted(true);
+    expect(session.getSnapshot().muted).toBe(true);
+    expect(notified).toBeGreaterThan(0);
+
+    session.setMuted(false);
+    expect(session.getSnapshot().muted).toBe(false);
+    unsubscribe();
+  });
+
+  it('keeps the performance readout and developer mode OFF by default', async () => {
+    const { session } = await import('./EmulatorSession.js');
+    // Nothing was ever stored (the fake localStorage returns null for everything), and
+    // both of these are opt-in — RetroArch ships `DEFAULT_FPS_SHOW false` for the same
+    // reason, and a debugger is not a player-facing feature.
+    expect(session.getSnapshot().showPerformance).toBe(false);
+    expect(session.getSnapshot().developerMode).toBe(false);
+
+    session.setDeveloperMode(true);
+    expect(session.getSnapshot().developerMode).toBe(true);
+    session.setShowPerformance(true);
+    expect(session.getSnapshot().showPerformance).toBe(true);
+
+    session.setDeveloperMode(false);
+    session.setShowPerformance(false);
+    expect(session.getSnapshot().developerMode).toBe(false);
+    expect(session.getSnapshot().showPerformance).toBe(false);
+  });
+
+  /** It had exactly one call site, inside the pre-cartridge block, so it was unreachable. */
+  it('lets the system preference change AFTER a cartridge is loaded', async () => {
+    const { session } = await import('./EmulatorSession.js');
+    await session.loadRom('test.gb', syntheticRom());
+    expect(session.getSnapshot().status).not.toBe('empty');
+
+    session.setSystemPreference('GB');
+    expect(session.getSnapshot().systemPreference).toBe('GB');
+    session.setSystemPreference('auto');
+    expect(session.getSnapshot().systemPreference).toBe('auto');
+  });
+});
+
+describe('the settings drawer pauses', () => {
+  it('PAUSES WHILE THE MENU IS OPEN, so the keys you read it with do not drive the game', async () => {
+    const { session } = await import('./EmulatorSession.js');
+    await session.loadRom('test.gb', syntheticRom());
+    for (let i = 0; i < 10; i++) frame();
+    expect(session.getSnapshot().status).toBe('running');
+
+    session.menuOpened();
+    expect(session.getSnapshot().status).toBe('paused');
+
+    // And it really is stopped, not merely labelled as stopped.
+    const before = session.getFrameCount();
+    for (let i = 0; i < 20; i++) frame();
+    expect(session.getFrameCount()).toBe(before);
+
+    session.menuClosed();
+    expect(session.getSnapshot().status).toBe('running');
+    for (let i = 0; i < 20; i++) frame();
+    expect(session.getFrameCount()).toBeGreaterThan(before);
+  });
+
+  it('LEAVES AN ALREADY-PAUSED GAME PAUSED after the menu closes', async () => {
+    const { session } = await import('./EmulatorSession.js');
+    await session.loadRom('test.gb', syntheticRom());
+    for (let i = 0; i < 10; i++) frame();
+
+    session.pause();
+    expect(session.getSnapshot().status).toBe('paused');
+
+    session.menuOpened();
+    session.menuClosed();
+
+    // Closing settings must not start a game the player deliberately stopped.
+    expect(session.getSnapshot().status).toBe('paused');
+  });
+
+  it('does not resume a game that was never running when the menu opened', async () => {
+    const { session } = await import('./EmulatorSession.js');
+    session.menuOpened();
+    session.menuClosed();
+    expect(session.getSnapshot().status).not.toBe('running');
+  });
+});

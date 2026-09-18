@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { readStateHeader, STATE_VERSION } from '@webboy/emulator';
 import { session } from '../emulator/EmulatorSession.js';
+import { downloadBytes } from '../util/download.js';
 import { SLOT_COUNT, type StateSlot } from '../storage/StateStore.js';
 
 /** The slot the transport row's Save State / Load State buttons use. */
@@ -45,28 +46,19 @@ export function StatesPanel(): React.JSX.Element {
 
   const handleExport = (): void => {
     const state = session.exportState();
-    if (!state) return;
-    const bytes = new Uint8Array(state.data.length);
-    bytes.set(state.data);
-    const url = URL.createObjectURL(
-      new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = state.filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (state) downloadBytes(state.data, state.filename);
   };
 
   const staleCount = slots.filter((slot) => slot !== null && isStale(slot)).length;
 
   return (
     <section className="panel">
-      <h2 className="panel-title">Save states</h2>
+      <h3 className="panel-title">Save states</h3>
 
       <p className="hint">
         {SLOT_COUNT} slots, kept on this device and tied to this cartridge. <strong>Slot 1</strong>{' '}
-        is the quick slot — the Save State and Load State buttons above write and read it.
+        is the quick slot — the Save State and Load State buttons on the control bar write and read
+        it.
       </p>
 
       {staleCount > 0 && (

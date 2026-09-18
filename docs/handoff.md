@@ -16,7 +16,7 @@ now** — including the things that are wrong.
 | Licence | **MIT** — `LICENSE` and all three `package.json` files |
 | Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
 | Source | 16,364 lines of `.ts`/`.tsx`, excluding tests |
-| Tests | 992 passing, 1 skipped |
+| Tests | 1004 passing, 1 skipped |
 | Build | 11 files, 496 KB (`apps/web/dist`); JS 397 KB, 120 KB gzipped |
 | Performance | ~20x realtime, p99 well under budget |
 
@@ -125,6 +125,29 @@ claim in this repository rests on tests and typecheck. The distance between *pas
 
 ## Recently landed
 
+- **The settings were scattered across the page; now they are behind one door.** Six tabs —
+  Cartridge, Controls, Saves, States, Cheats, Debug — sat expanded under the device while you
+  played, with no Settings entry point anywhere. Two agents were used: one read the menu
+  structure of **eight emulators at source level**, the other inventoried every control in the
+  app so nothing was lost in the move. The finding was unanimous: **none of the eight puts
+  configuration in the window during play** (RetroArch even ships `DEFAULT_FPS_SHOW false`),
+  and **none shows a debugger to players** — ares calls its panel "Developer", Mesen isolates
+  it in its own top-level menu, RetroArch/EmulatorJS/Delta ship none.
+
+  The control bar is now Pause/Resume · Save State · Load State · Speed · Fullscreen ·
+  Settings; everything else is in a right-hand drawer (a drawer, not a modal, per NN/g: the
+  settings change the picture you are looking at, so it has to stay visible). Debug is behind
+  a Developer-mode switch and the fps readout behind a Show-performance switch, both off by
+  default and persisted. The drawer pauses the game while open, as RetroArch, Delta and mGBA
+  all do — otherwise the arrow keys used to read the menu also drive the character.
+
+  Three latent bugs fixed on the way: the **system picker was unreachable** once a cartridge
+  loaded (`setSystemPreference` had one call site, inside the `!loaded` branch); **`muted`
+  lived in a component's `useState`** while every other control was in the session snapshot;
+  and the `.state`/`.sav` **download code existed in three near-identical copies**.
+
+  **Not verified in a browser.** The rendering of the drawer, the scrim, the nav at 375px and
+  the sheet inside fullscreen have not been seen by anyone.
 - **Save states corrupted Game Boy Color graphics.** Reported from play as the game
   turning into "graphic horror" after a load. None of the CGB register state was in the
   save: both 64-byte colour palette RAMs, the VRAM bank, the WRAM bank, the double-speed

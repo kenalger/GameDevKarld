@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { session } from '../emulator/EmulatorSession.js';
+import { downloadBytes } from '../util/download.js';
 
 /**
  * Battery-save controls.
@@ -18,17 +19,7 @@ export function SavesPanel({ restored }: { restored: boolean }): React.JSX.Eleme
       setNote('This cartridge has no battery, so there is nothing to export.');
       return;
     }
-    // Copy into a plain ArrayBuffer: the emulator's view may be backed by a shared buffer
-    // once the core moves to a Web Worker in Phase 10.
-    const bytes = new Uint8Array(save.data.length);
-    bytes.set(save.data);
-    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = save.filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadBytes(save.data, save.filename);
     setNote(`Exported ${save.filename} (${save.data.length} bytes).`);
   };
 
@@ -47,7 +38,7 @@ export function SavesPanel({ restored }: { restored: boolean }): React.JSX.Eleme
 
   return (
     <section className="panel">
-      <h2 className="panel-title">Saves</h2>
+      <h3 className="panel-title">Saves</h3>
       <p className="hint" style={{ marginTop: 0 }}>
         {restored
           ? 'Your saved game was restored. Progress is written automatically.'

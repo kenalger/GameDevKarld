@@ -9,6 +9,7 @@ import { AudioOutput } from '../audio/AudioOutput.js';
 import { stateStore, SLOT_COUNT, type StateSlot } from '../storage/StateStore.js';
 import { cheatStore, type StoredCheat } from '../storage/CheatStore.js';
 import { decodeCheat, CheatParseError, type ParsedCheat } from '@webboy/emulator';
+import { DEVELOPER_KEY, PERFORMANCE_KEY, loadFlag, saveFlag } from './settings.js';
 
 /**
  * Which system to run. 'auto' reads the cartridge header, which is right almost always.
@@ -50,6 +51,18 @@ export interface SessionSnapshot {
   readonly statesRevision: number;
   /** Emulation speed multiplier. 1 is real time. */
   readonly speed: number;
+  /**
+   * Whether sound output is muted.
+   *
+   * In the snapshot rather than in a component's `useState` because it is a property of
+   * the session, like `speed`: it was local to App, so `setMuted` could change the gain
+   * node while nothing else in the app could read the result or restore it.
+   */
+  readonly muted: boolean;
+  /** Show the fps / frames / target readout under the device. Opt-in, like RetroArch's. */
+  readonly showPerformance: boolean;
+  /** Reveal the debugger. Off by default; the debugger is not a player-facing feature. */
+  readonly developerMode: boolean;
   /** Which system the player asked for. 'auto' trusts the cartridge header. */
   readonly systemPreference: SystemPreference;
   /** Which core is actually running, once a cartridge is in. */
@@ -86,12 +99,17 @@ class EmulatorSession {
     hasQuickState: false,
     statesRevision: 0,
     speed: 1,
+    muted: false,
+    showPerformance: loadFlag(PERFORMANCE_KEY),
+    developerMode: loadFlag(DEVELOPER_KEY),
     systemPreference: loadSystemPreference(),
     activeSystem: null,
   };
   private rafId: number | null = null;
   /** True when the tab-hide handler paused us, so returning may resume automatically. */
   private autoPaused = false;
+  /** True when the settings drawer paused us, so closing it may resume. */
+  private pausedByMenu = false;
   /** Set when audio could not be woken without a gesture; the next input wakes it. */
   private audioNeedsGesture = false;
   private ctx: CanvasRenderingContext2D | null = null;
@@ -515,6 +533,24 @@ class EmulatorSession {
 
   setMuted(muted: boolean): void {
     this.audio.setMuted(muted);
+    this.update({ muted });
+  }
+
+  /**
+   * The performance readout and the debugger, both off by default.
+   *
+   * They live here rather than in component state for the same reason the speed does:
+   * they are session-wide, they persist across a reload, and the settings drawer that
+   * changes them is not the only thing that reads them.
+   */
+  setShowPerformance(showPerformance: boolean): void {
+    saveFlag(PERFORMANCE_KEY, showPerformance);
+    this.update({ showPerformance });
+  }
+
+  setDeveloperMode(developerMode: boolean): void {
+    saveFlag(DEVELOPER_KEY, developerMode);
+    this.update({ developerMode });
   }
 
   getAudioStats() {
@@ -632,6 +668,28 @@ class EmulatorSession {
     this.frameCount = 0;
     this.pacer.reset();
     this.paint();
+  }
+
+  /**
+   * Pause while the settings drawer is open, and resume on close.
+   *
+   * Every emulator this was checked against pauses when its menu opens — RetroArch's
+   * Quick Menu, Delta's pause menu, mGBA. Without it the game runs on behind the drawer,
+   * and the arrow keys used to read the menu also drive the character.
+   *
+   * Kept out of the component because "resume only if WE paused" is a rule with a state
+   * machine behind it, and the same rule already exists for tab switching below.
+   */
+  menuOpened(): void {
+    this.pausedByMenu = this.snapshot.status === 'running';
+    if (this.pausedByMenu) this.pause();
+  }
+
+  /** A game already paused before the drawer opened stays paused after it closes. */
+  menuClosed(): void {
+    if (!this.pausedByMenu) return;
+    this.pausedByMenu = false;
+    this.resume();
   }
 
   /** Pause on hide; on return, drop accumulated time rather than running a catch-up burst. */

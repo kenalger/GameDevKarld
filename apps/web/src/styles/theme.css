@@ -385,12 +385,12 @@ body {
   align-items: center;
 }
 
-/* Everything that is not the picture or the controls for it. */
+/* Everything that is not the picture or the controls for it. The settings drawer is
+   deliberately absent from this list: it is `position: fixed` inside `.app`, which is the
+   element that goes fullscreen, so it keeps working there. A drawer portalled to
+   `document.body` would be invisible for the whole time the app is fullscreen. */
 .app:fullscreen > .header,
 .app:fullscreen > .disclaimer,
-.app:fullscreen > .rule,
-.app:fullscreen > .tabs,
-.app:fullscreen > [role='tabpanel'],
 .app:fullscreen .statusbar,
 .app:fullscreen .keylegend,
 .app:fullscreen .empty-state,
@@ -845,35 +845,8 @@ button.primary:hover:not(:disabled) {
   font-weight: 600;
 }
 
-/* Tabs are a ruled register, not a row of buttons. */
-.tabs {
-  display: flex;
-  gap: 26px;
-  border-bottom: 1px solid var(--rule);
-  flex-wrap: wrap;
-}
-.tabs button {
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: none;
-  color: var(--ink-3);
-  padding: 9px 0;
-  margin-bottom: -1px;
-  font-size: 11px;
-}
-.tabs button:hover:not(:disabled) {
-  background: none;
-  color: var(--ink-2);
-}
-.tabs button:active:not(:disabled) {
-  background: none;
-  color: var(--ink);
-}
-.tabs button[aria-selected='true'] {
-  color: var(--ink);
-  border-bottom-color: var(--signal);
-}
+/* The six-tab register that used to sit under the device is gone entirely — its panels
+   live in the settings drawer now. See `.drawer` below. */
 
 .regs {
   margin: 0;
@@ -925,15 +898,6 @@ input[type='text'] {
 }
 input[type='text']:focus {
   border-bottom-color: var(--signal);
-}
-
-/* The one rule, reused wherever a divider is needed. It is the only line style
-   in the file — there are no enclosing outlines anywhere except the device. */
-.rule {
-  border: 0;
-  border-top: 1px solid var(--rule);
-  margin: 8px 0 0;
-  width: 100%;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1142,12 +1106,174 @@ input[type='text']:focus {
 }
 
 /* ---------------------------------------------------------------------------
+   Settings drawer — a sheet over the page, with the game still visible.
+
+   A drawer and not a modal, on the Nielsen Norman distinction: a modal is for an
+   interruption you want dealt with, a drawer is right when the user has to keep
+   the underlying screen visible while working. Almost everything in here changes
+   the picture you are looking at.
+
+   Three things this deliberately does NOT do:
+
+   - No border on the sheet. This file has exactly one line, a 1px horizontal
+     divider, and there are no enclosing outlines anywhere except the device. The
+     scrim is what separates the sheet from the page; an edge would be a second
+     line type doing work the scrim already does.
+   - No shadow. Two box-shadows exist in this file — the inset that recesses the
+     LCD well and the halo on the power lamp — and both describe physical depth.
+     A card shadow is not on the list.
+   - No new colour. The scrim is `--ink` mixed with transparency, the sheet is
+     `--paper`, and the selected nav item is the ordinary `--key-face` control
+     surface. "Where you are" is a filled surface, not an underline, because a
+     vertical marker beside a vertical list would be a second line type.
+   --------------------------------------------------------------------------- */
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.drawer {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 21;
+  width: min(560px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  /* `.app` owns the page's safe-area insets; a fixed sheet is outside that box
+     and has to take its own, or on a notched phone in landscape the heading
+     sits under the sensor housing. */
+  padding: calc(16px + env(safe-area-inset-top, 0px)) calc(20px + env(safe-area-inset-right, 0px)) 0
+    calc(20px + env(safe-area-inset-left, 0px));
+}
+
+/* The one animation in this file. The mock's position is "no page transitions",
+   and this is not one: the slide is what says the page is still there behind it
+   and where the sheet will go back to. 120ms, in the same register as the 60–90ms
+   press. Removed entirely when the player has asked for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .drawer {
+    animation: drawer-in 120ms ease-out;
+  }
+}
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.drawer-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+}
+
+.drawer-body {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 0 24px;
+  flex: 1;
+  min-height: 0;
+}
+
+.drawer-nav {
+  overflow-y: auto;
+  min-height: 0;
+  padding-top: 14px;
+}
+.drawer-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.drawer-nav button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  color: var(--ink-3);
+  padding: 9px 10px;
+}
+/* Hover lifts the ink; only the current section takes a surface. That keeps
+   "where you are" distinct from "what you are pointing at". */
+.drawer-nav button:hover:not(:disabled) {
+  background: none;
+  color: var(--ink);
+}
+.drawer-nav button[aria-current='true'] {
+  background: var(--key-face);
+  color: var(--ink);
+}
+
+.drawer-content {
+  overflow-y: auto;
+  min-height: 0;
+  /* Stops a flick at the end of the list scrolling the page underneath. */
+  overscroll-behavior: contain;
+  padding: 14px 0 calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+/* The slot rows were laid out for the full page width. Inside a 560px sheet with
+   a nav beside them they get the same wrapped treatment a phone gets — this is a
+   container-width problem, not a viewport one, so it cannot be a media query. */
+.drawer .slots li {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.drawer .slot-label {
+  flex-basis: calc(100% - 78px);
+}
+.drawer .slot-actions {
+  margin-left: auto;
+}
+
+/* On a phone the sheet is the whole screen and the nav is a scrolling strip
+   above the content, which is the only way eight labels fit at 375px. */
+@media (max-width: 560px) {
+  .drawer {
+    width: 100%;
+    padding-right: calc(14px + env(safe-area-inset-right, 0px));
+    padding-left: calc(14px + env(safe-area-inset-left, 0px));
+  }
+  .drawer-body {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .drawer-nav {
+    overflow-x: auto;
+    padding-top: 10px;
+  }
+  .drawer-nav ul {
+    flex-direction: row;
+    gap: 6px;
+  }
+  .drawer-nav button {
+    width: auto;
+    white-space: nowrap;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    Phones.
 
    Until now the only breakpoint in this file was `pointer: coarse`, which
    reveals the touch pad — the LAYOUT was the desktop one at every width. On a
-   375px screen, 24px of page padding and a 26px tab gap are a large fraction of
-   the display, and the six tabs wrapped onto three lines.
+   375px screen, 24px of page padding is a large fraction of the display.
    --------------------------------------------------------------------------- */
 @media (max-width: 560px) {
   .app {
@@ -1173,10 +1299,6 @@ input[type='text']:focus {
   }
   .stage {
     padding: 8px;
-  }
-
-  .tabs {
-    gap: 14px;
   }
 
   /* Three readouts at 19px mono plus a 20px gap overflow 375px. */

@@ -136,7 +136,7 @@ export function ControlsPanel(): React.JSX.Element {
 
   return (
     <section className="panel">
-      <h2 className="panel-title">Controls</h2>
+      <h3 className="panel-title">Controls</h3>
 
       <div className="bindings" ref={listRef}>
         {ROWS.map((button) => {
