@@ -1,5 +1,5 @@
 import type { GameBoyButton } from '@webboy/emulator';
-import type { InputLatch } from './InputLatch.js';
+import { type InputLatch } from './InputLatch.js';
 /**
  * Multi-touch handling for the on-screen controls.
  *

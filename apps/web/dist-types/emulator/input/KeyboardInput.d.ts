@@ -1,4 +1,4 @@
-import type { InputLatch } from './InputLatch.js';
+import { type InputLatch } from './InputLatch.js';
 import { type Bindings } from './bindings.js';
 /**
  * Translates keyboard events into latch updates.

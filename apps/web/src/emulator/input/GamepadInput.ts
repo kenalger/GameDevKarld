@@ -1,5 +1,5 @@
 import { ALL_BUTTONS, type GameBoyButton } from '@webboy/emulator';
-import type { InputLatch } from './InputLatch.js';
+import { SOURCE, type InputLatch } from './InputLatch.js';
 
 /** Standard-gamepad button indices. */
 const BUTTON_MAP: Partial<Record<number, GameBoyButton>> = {
@@ -60,17 +60,17 @@ export class GamepadInput {
       const isDown = pressed.has(button);
       const wasDown = this.held.has(button);
       if (isDown && !wasDown) {
-        this.latch.press(button);
+        this.latch.press(button, SOURCE.gamepad);
         this.held.add(button);
       } else if (!isDown && wasDown) {
-        this.latch.release(button);
+        this.latch.release(button, SOURCE.gamepad);
         this.held.delete(button);
       }
     }
   }
 
   releaseAll(): void {
-    for (const button of this.held) this.latch.release(button);
+    for (const button of this.held) this.latch.release(button, SOURCE.gamepad);
     this.held.clear();
   }
 }

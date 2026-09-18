@@ -32,6 +32,21 @@ function syntheticRom(): Uint8Array {
 let now = 0;
 const queue: ((time: number) => void)[] = [];
 let audioState = 'suspended';
+/** Button 0 of a fake standard gamepad. Flip to drive the gamepad path. */
+let padButton0 = false;
+const fakePads = [
+  {
+    mapping: 'standard',
+    // A getter, not a value: the array is built once, so a plain boolean would freeze
+    // whatever padButton0 was at module load.
+    buttons: Array.from({ length: 17 }, (_, i) => ({
+      get pressed() {
+        return i === 0 && padButton0;
+      },
+    })),
+    axes: [0, 0, 0, 0],
+  },
+];
 
 /** Runs one animation frame, 16.7ms later. */
 function frame(): void {
@@ -53,7 +68,7 @@ beforeAll(() => {
   };
   g['window'] = { addEventListener: () => undefined, removeEventListener: () => undefined };
   Object.defineProperty(globalThis, 'navigator', {
-    value: { getGamepads: () => [] },
+    value: { getGamepads: () => fakePads },
     configurable: true,
   });
   g['AudioContext'] = class {
@@ -127,6 +142,30 @@ describe('tab switching', () => {
     await Promise.resolve(); // the wake is a promise chain
     await Promise.resolve();
     expect(audioState).toBe('running');
+  });
+
+  /**
+   * GamepadInput keeps its own shadow set of held buttons and only emits a press on a
+   * false->true edge. pause() cleared the latch but not that set, so a button held across
+   * a pause looked like it was still down afterwards, no press was ever emitted, and it
+   * stayed dead until the player let go and pressed again.
+   */
+  it('REVIVES A PAD BUTTON HELD ACROSS A PAUSE', async () => {
+    const { session } = await import('./EmulatorSession.js');
+    const { buttonBit } = await import('@webboy/emulator');
+    await session.loadRom('test.gb', syntheticRom());
+
+    padButton0 = true; // and never released
+    for (let i = 0; i < 3; i++) frame();
+    expect(session.input.peek() & buttonBit('a')).toBeTruthy();
+
+    session.pause();
+    session.resume();
+    for (let i = 0; i < 3; i++) frame();
+
+    expect(session.input.peek() & buttonBit('a')).toBeTruthy();
+    padButton0 = false;
+    for (let i = 0; i < 3; i++) frame();
   });
 
   it('LEAVES A MANUAL PAUSE ALONE — only an automatic one is undone', async () => {

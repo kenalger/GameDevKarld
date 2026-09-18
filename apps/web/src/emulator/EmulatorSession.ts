@@ -386,8 +386,12 @@ class EmulatorSession {
     this.manager.pause();
     this.stop();
     this.flushSave();
-    // Otherwise a button held when the player hit Pause is still held on resume.
+    // Otherwise a button held when the player hit Pause is still held on resume. The
+    // gamepad needs telling separately: it keeps its own shadow set, and without this a
+    // pad button held across a pause is seen as still-down afterwards, so no press is
+    // ever emitted and that button is dead until released and pressed again.
     this.input.releaseAll();
+    this.gamepad.releaseAll();
     this.manager.setInput(0);
     this.update({ status: 'paused' });
   }
@@ -457,11 +461,16 @@ class EmulatorSession {
   private readonly tick = (now: number): void => {
     this.rafId = requestAnimationFrame(this.tick);
 
+    // The Gamepad API is poll-based, and the browser cannot produce new data within one
+    // animation frame — so polling once per tick is both correct and enough. Inside the
+    // catch-up loop it ran up to four times after any hitch, allocating an array each time
+    // for data that could not have changed.
+    this.gamepad.poll();
+
     const frames = this.pacer.advance(now);
     for (let i = 0; i < frames; i++) {
-      // The Gamepad API is poll-based: read it here, inside the loop, then sample as late
-      // as possible before the frame runs. Latency is a feature — never buffer input.
-      this.gamepad.poll();
+      // Sample as late as possible before the frame runs, and once PER frame: each
+      // emulated frame has to consume its own sticky bits. Latency is a feature.
       this.manager.setInput(this.input.sample());
       this.manager.runFrame();
       this.frameCount++;

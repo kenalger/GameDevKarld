@@ -1,5 +1,5 @@
 import type { GameBoyButton } from '@webboy/emulator';
-import type { InputLatch } from './InputLatch.js';
+import { SOURCE, type InputLatch } from './InputLatch.js';
 
 /**
  * Multi-touch handling for the on-screen controls.
@@ -39,12 +39,12 @@ export class TouchInput {
     if (button === undefined) return;
     this.active.delete(pointerId);
     // Only release if no OTHER pointer is still holding the same button.
-    if (!this.isHeldByAnother(button)) this.latch.release(button);
+    if (!this.isHeldByAnother(button)) this.latch.release(button, SOURCE.touch);
   }
 
   /** Releases everything. For blur, tab-hide and pointer cancellation. */
   releaseAll(): void {
-    for (const button of this.active.values()) this.latch.release(button);
+    for (const button of this.active.values()) this.latch.release(button, SOURCE.touch);
     this.active.clear();
   }
 
@@ -58,7 +58,7 @@ export class TouchInput {
     if (next === previous) return;
 
     if (previous !== undefined && !this.isHeldByAnother(previous, pointerId)) {
-      this.latch.release(previous);
+      this.latch.release(previous, SOURCE.touch);
     }
 
     if (next === null) {
@@ -67,7 +67,7 @@ export class TouchInput {
     }
 
     this.active.set(pointerId, next);
-    this.latch.press(next);
+    this.latch.press(next, SOURCE.touch);
   }
 
   private isHeldByAnother(button: GameBoyButton, excluding?: number): boolean {
