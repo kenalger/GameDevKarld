@@ -17,6 +17,14 @@ export interface SessionSnapshot {
     readonly savesRestored: boolean;
     /** Whether the quick slot holds a state, so the Load button can disable itself. */
     readonly hasQuickState: boolean;
+    /**
+     * Bumped whenever a slot is written. The states panel re-reads its list on a change.
+     *
+     * A counter rather than a boolean because two saves to the same slot must still be two
+     * events, and rather than refreshing on every notify because listing reads every slot's
+     * full bytes out of IndexedDB — pause and resume should not pay for that.
+     */
+    readonly statesRevision: number;
     /** Emulation speed multiplier. 1 is real time. */
     readonly speed: number;
     /** Which system the player asked for. 'auto' trusts the cartridge header. */

@@ -644,6 +644,31 @@ button.primary:hover:not(:disabled) {
   font-family: var(--font-mono);
   font-size: 11px;
 }
+/* Marks the slot the transport row writes to, so "Save State" up there and "Slot 1"
+   down here are visibly the same thing. */
+.slot-tag {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--signal-text);
+}
+
+/* Eight slots is a long list on a phone, so the row stops being one line. */
+@media (max-width: 560px) {
+  .slots li {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+  .slot-label {
+    flex-basis: calc(100% - 78px);
+  }
+  .slot-actions {
+    margin-left: auto;
+  }
+}
 .slot-actions {
   display: flex;
   gap: 8px;

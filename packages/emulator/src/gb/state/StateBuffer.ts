@@ -30,6 +30,23 @@ export function cartridgeFingerprint(info: { saveKey: string } | null): number {
  */
 export const STATE_VERSION = 3;
 
+/**
+ * Reads just the container header, without parsing the state.
+ *
+ * A list of save states has to be able to say "this one is from an older format" rather
+ * than showing it as loadable and failing only when the player clicks Load. Deserializing
+ * each slot to find that out would mean parsing every state to draw a list.
+ *
+ * Returns null if the data is too short or is not a WebBoy state at all.
+ */
+export function readStateHeader(data: Uint8Array): { magic: number; version: number } | null {
+  if (data.byteLength < 6) return null;
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const magic = view.getUint32(0, true);
+  if (magic !== STATE_MAGIC && magic !== STATE_MAGIC_GBA) return null;
+  return { magic, version: view.getUint16(4, true) };
+}
+
 export class StateFormatError extends Error {
   constructor(message: string) {
     super(message);

@@ -122,3 +122,10 @@ export {
   type ParsedCheat,
 } from './cheats/types.js';
 export { GbCheatEngine } from './gb/cheats/GbCheatEngine.js';
+
+export {
+  readStateHeader,
+  STATE_VERSION,
+  STATE_MAGIC,
+  STATE_MAGIC_GBA,
+} from './gb/state/StateBuffer.js';

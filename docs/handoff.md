@@ -16,7 +16,7 @@ now** — including the things that are wrong.
 | Licence | **MIT** — `LICENSE` and all three `package.json` files |
 | Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
 | Source | 16,364 lines of `.ts`/`.tsx`, excluding tests |
-| Tests | 986 passing, 1 skipped |
+| Tests | 992 passing, 1 skipped |
 | Build | 11 files, 496 KB (`apps/web/dist`); JS 397 KB, 120 KB gzipped |
 | Performance | ~20x realtime, p99 well under budget |
 

@@ -1,4 +1,10 @@
-export declare const SLOT_COUNT = 4;
+/**
+ * Eight, which is what mGBA, RetroArch and SameBoy all offer.
+ *
+ * Four was too few to be useful: slot 1 is the quick slot that the transport row's Save
+ * State button overwrites, so a player who used it had three real slots left.
+ */
+export declare const SLOT_COUNT = 8;
 export interface StateSlot {
     readonly key: string;
     readonly cartridge: string;

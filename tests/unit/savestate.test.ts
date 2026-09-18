@@ -4,7 +4,9 @@ import { GameBoyCore } from '../../packages/emulator/src/gb/GameBoyCore.js';
 import {
   StateFormatError,
   STATE_MAGIC,
+  STATE_MAGIC_GBA,
   STATE_VERSION,
+  readStateHeader,
 } from '../../packages/emulator/src/gb/state/StateBuffer.js';
 import { buttonBit } from '../../packages/emulator/src/gb/input/Joypad.js';
 import { buildRom } from '../harness/rom.js';
@@ -303,5 +305,54 @@ describe('save state — Game Boy Color', () => {
 
     // The transfer is active again, with its own remaining length.
     expect(core.mmu.read(0xff55) & 0x80).toBe(0);
+  });
+});
+
+/**
+ * The header peek behind the slot list's "older format" marking.
+ *
+ * The states panel calls this for every slot it draws, so getting it wrong either hides
+ * a perfectly good state or offers an unloadable one as available — and the second is how
+ * the CGB corruption reached a player in the first place.
+ */
+describe('readStateHeader', () => {
+  const header = (magic: number, version: number): Uint8Array => {
+    const bytes = new Uint8Array(6);
+    const view = new DataView(bytes.buffer);
+    view.setUint32(0, magic, true);
+    view.setUint16(4, version, true);
+    return bytes;
+  };
+
+  it('reads the version off a state this build just wrote', () => {
+    const state = new Uint8Array(synthetic().serialize());
+    expect(readStateHeader(state)).toEqual({ magic: STATE_MAGIC, version: STATE_VERSION });
+  });
+
+  it('reports an older format rather than refusing to read it', () => {
+    // The point of the function: a version 2 state is readable ENOUGH to be labelled.
+    expect(readStateHeader(header(STATE_MAGIC, 2))).toEqual({ magic: STATE_MAGIC, version: 2 });
+  });
+
+  it('recognises a GBA state, which is a different container', () => {
+    expect(readStateHeader(header(STATE_MAGIC_GBA, 1))?.magic).toBe(STATE_MAGIC_GBA);
+  });
+
+  it('returns null for data that is not a save state at all', () => {
+    expect(readStateHeader(new Uint8Array([1, 2, 3, 4, 5, 6]))).toBeNull();
+  });
+
+  it('returns null rather than reading past the end of a short buffer', () => {
+    expect(readStateHeader(new Uint8Array(5))).toBeNull();
+    expect(readStateHeader(new Uint8Array(0))).toBeNull();
+  });
+
+  it('reads through a view with a non-zero byte offset', () => {
+    // IndexedDB hands back arrays that may be views onto a larger buffer; using
+    // `data.buffer` without the offset would read the wrong six bytes.
+    const backing = new Uint8Array(16);
+    backing.set(header(STATE_MAGIC, 7), 8);
+    const view = backing.subarray(8);
+    expect(readStateHeader(view)).toEqual({ magic: STATE_MAGIC, version: 7 });
   });
 });
