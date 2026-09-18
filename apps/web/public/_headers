@@ -1,0 +1,34 @@
+# Cloudflare Pages response headers. Copied verbatim into the build output.
+#
+# Deliberately NOT set here, and why:
+#
+#   Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy
+#     These would make crossOriginIsolated true, which switches RingBuffer from a plain
+#     ArrayBuffer to a SharedArrayBuffer. That path is real but far less exercised than the
+#     fallback, and this app has never been run in a browser at all — changing to the
+#     less-tested path on the very first deploy is the wrong order. Turn them on with the
+#     Web Worker in phase 10, once someone has watched it run.
+#
+#   Content-Security-Policy
+#     Worth having, but a CSP that is slightly wrong breaks the page on load, and it cannot
+#     be verified from here. See docs/deploy.md for a ready policy to apply once the app has
+#     been confirmed working in a browser.
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/favicon.svg
+  Cache-Control: public, max-age=604800
+
+# The entry point must never be cached hard, or a deploy does not reach anyone.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), usb=(), payment=()
