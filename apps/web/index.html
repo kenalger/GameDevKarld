@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>WebBoy</title>
+    <!-- SVG only: the browser falls back to nothing rather than requesting favicon.ico,
+         which was 404ing on every load and cluttering the console. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta
       name="description"
       content="A privacy-first Game Boy emulator for the browser. Your ROM stays on your device."

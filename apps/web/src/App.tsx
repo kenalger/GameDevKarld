@@ -11,6 +11,7 @@ import { RomInfoPanel } from './components/RomInfoPanel.js';
 import { TouchControls } from './components/TouchControls.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { DebugPanel } from './components/DebugPanel.js';
+import { KeyLegend } from './components/KeyLegend.js';
 
 const TABS = ['Cartridge', 'Controls', 'Saves', 'States', 'Debug'] as const;
 type Tab = (typeof TABS)[number];
@@ -139,6 +140,10 @@ export function App(): React.JSX.Element {
           Fullscreen
         </button>
       </div>
+
+      {/* On desktop the on-screen pad is hidden, so the keyboard is the only way in.
+          Saying so here is the difference between a game and an apparently frozen one. */}
+      {loaded && <KeyLegend />}
 
       <StatusBar />
 

@@ -744,3 +744,36 @@ input[type='text']:focus {
   margin: 8px 0 0;
   width: 100%;
 }
+
+/* ---------------------------------------------------------------------------
+   Key legend — printed under the device the way a panel is silkscreened.
+   Same label/value idiom as the readout strip, at a quieter weight.
+   --------------------------------------------------------------------------- */
+.keylegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 22px;
+  margin: 0;
+  max-width: var(--device);
+  margin-inline: auto;
+  width: 100%;
+}
+.keylegend div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.keylegend dt {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.keylegend dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+}
