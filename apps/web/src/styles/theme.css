@@ -135,8 +135,35 @@ body {
   flex-direction: column;
   max-width: 1120px;
   margin: 0 auto;
-  padding: 24px 24px 0;
+  /* index.html sets viewport-fit=cover, so on a notched phone the page extends
+     under the notch and the home indicator. Without these the masthead sits
+     under the sensor housing in landscape and the disclaimer under the bar. */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-right, 0px)) 0
+    calc(24px + env(safe-area-inset-left, 0px));
   gap: var(--gap);
+}
+
+/* ---------------------------------------------------------------------------
+   The device is bounded by the WINDOW HEIGHT, not only by its own width.
+
+   `--device` was a flat 620px. At that width the screen is 556×500, and the
+   whole device is ~660px tall before the masthead, the control bar, the key
+   legend and the readout strip are counted. A 12" MacBook is 1152×720, so the
+   device alone was taller than the window: the picture and the controls could
+   not be on screen at the same time, at any zoom level.
+
+   160/144 is the screen's aspect ratio. The 64px is the furniture around it
+   (well padding plus shell padding) and the 400px is the page chrome above and
+   below. Result: ~413px on a 720px-tall window, ~620px (the cap) from 900px up.
+
+   Only above 700px wide. On a phone height is plentiful relative to width, the
+   width already binds, and clamping by height there would shrink the picture
+   for nothing.
+   --------------------------------------------------------------------------- */
+@media (min-width: 700px) {
+  .app {
+    --device: clamp(280px, calc((100dvh - 400px) * 160 / 144 + 64px), 620px);
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -334,6 +361,82 @@ body {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Fullscreen.
+
+   `requestFullscreen()` is called on `.app`, and `.app` kept `max-width: 1120px`
+   with 24px padding while `.body` kept its `--device` cap. So fullscreen
+   produced the ordinary page on a black background: a 620px device floating in
+   the middle of a 1440px display, with the tab strip, the readout and the
+   disclaimer still sitting under it. Every cap has to come off, and the picture
+   has to be sized from whichever axis runs out FIRST.
+
+   That last part is the actual bug, and it is the same one as everywhere else
+   in this file: `.screen` is `width: 100%` with an `aspect-ratio`, which bounds
+   one axis only. On any window wider than 10:9 — every laptop — height is what
+   runs out, and a width-bound picture simply overflows it.
+   --------------------------------------------------------------------------- */
+.app:fullscreen {
+  max-width: none;
+  padding: 0;
+  gap: 10px;
+  background: #000;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Everything that is not the picture or the controls for it. */
+.app:fullscreen > .header,
+.app:fullscreen > .disclaimer,
+.app:fullscreen > .rule,
+.app:fullscreen > .tabs,
+.app:fullscreen > [role='tabpanel'],
+.app:fullscreen .statusbar,
+.app:fullscreen .keylegend,
+.app:fullscreen .empty-state,
+.app:fullscreen .plate {
+  display: none;
+}
+
+/* No plastic in fullscreen. The shell exists to make the device read as an
+   object on a page; in fullscreen there is no page, and a bezel around a
+   maximised picture is just wasted screen. */
+.app:fullscreen .body {
+  max-width: none;
+  width: auto;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.app:fullscreen .stage {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+}
+
+/* Bounded on BOTH axes — whichever runs out first wins. 96px is the control
+   bar and its gap. */
+.app:fullscreen .screen {
+  width: min(100vw, calc((100dvh - 96px) * 160 / 144));
+  max-width: none;
+  height: auto;
+}
+
+.app:fullscreen .controlbar {
+  max-width: none;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+/* A touch device also shows the pad inside `.body`, which needs roughly 200px
+   more than the control bar alone. */
+@media (pointer: coarse) {
+  .app:fullscreen .screen {
+    width: min(100vw, calc((100dvh - 300px) * 160 / 144));
+  }
+}
+
 button {
   font: inherit;
   padding: 9px 15px;
@@ -431,7 +534,9 @@ button.primary:hover:not(:disabled) {
 
 .disclaimer {
   margin-top: auto;
-  padding-block: 20px 34px;
+  /* `.app` has no bottom padding, so the last element on the page owns the
+     home-indicator inset. */
+  padding-block: 20px calc(34px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--rule);
   color: var(--ink-3);
   font-size: 11.5px;
@@ -1009,4 +1114,70 @@ input[type='text']:focus {
 }
 .system-picker button[aria-checked='true']:hover {
   background: color-mix(in srgb, var(--signal) 88%, #000);
+}
+
+/* ---------------------------------------------------------------------------
+   Phones.
+
+   Until now the only breakpoint in this file was `pointer: coarse`, which
+   reveals the touch pad — the LAYOUT was the desktop one at every width. On a
+   375px screen, 24px of page padding and a 26px tab gap are a large fraction of
+   the display, and the six tabs wrapped onto three lines.
+   --------------------------------------------------------------------------- */
+@media (max-width: 560px) {
+  .app {
+    padding: calc(14px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-right, 0px))
+      0 calc(14px + env(safe-area-inset-left, 0px));
+    gap: 10px;
+  }
+
+  .header {
+    gap: 10px;
+    padding-bottom: 12px;
+  }
+  .header h1 {
+    font-size: 17px;
+  }
+  .header .tagline {
+    font-size: 11px;
+  }
+
+  /* The shell gives up padding before the picture does. */
+  .body {
+    padding: 12px 12px 14px;
+  }
+  .stage {
+    padding: 8px;
+  }
+
+  .tabs {
+    gap: 14px;
+  }
+
+  /* Three readouts at 19px mono plus a 20px gap overflow 375px. */
+  .statusbar {
+    gap: 8px 14px;
+  }
+  .statusbar dd {
+    font-size: 16px;
+  }
+
+  .keylegend {
+    gap: 3px 14px;
+  }
+
+  .disclaimer {
+    padding-block: 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* A finger is not a mouse pointer. 9px of vertical padding on an 11px label is
+   a 31px target; the WCAG 2.5.5 guideline is 44px, and every transport control
+   was under it. Applied by INPUT TYPE rather than by width, because a touch
+   laptop needs it at 1280px just as much as a phone does. */
+@media (pointer: coarse) {
+  button,
+  .speed select {
+    min-height: 44px;
+  }
 }

@@ -8,6 +8,11 @@ Every phase has a **hard exit gate** — a test result, not an opinion. `emu-acc
 
 > **Where things actually are right now — including what is broken — is in
 > [docs/handoff.md](../handoff.md).** This file is the plan; that one is the state.
+>
+> For the whole picture rather than one phase, see the
+> [software development plan](../software-development-plan.md) — product, process, quality bar,
+> measured status and what happens next — plus [features](../features.md) and
+> [how it works](../how-it-works.md).
 
 ## Phase map
 
