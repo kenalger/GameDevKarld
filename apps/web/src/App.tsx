@@ -12,8 +12,9 @@ import { TouchControls } from './components/TouchControls.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { DebugPanel } from './components/DebugPanel.js';
 import { KeyLegend } from './components/KeyLegend.js';
+import { CheatsPanel } from './components/CheatsPanel.js';
 
-const TABS = ['Cartridge', 'Controls', 'Saves', 'States', 'Debug'] as const;
+const TABS = ['Cartridge', 'Controls', 'Saves', 'States', 'Cheats', 'Debug'] as const;
 type Tab = (typeof TABS)[number];
 
 export function App(): React.JSX.Element {
@@ -127,6 +128,19 @@ export function App(): React.JSX.Element {
         <button type="button" onClick={() => session.reset()} disabled={!loaded}>
           Reset
         </button>
+        {/* Quick save/load live here rather than only in the States tab: a feature you
+            cannot find is a feature you do not have. The panel keeps the full slot list. */}
+        <button type="button" onClick={() => void session.quickSave()} disabled={!loaded}>
+          Save State
+        </button>
+        <button
+          type="button"
+          onClick={() => void session.quickLoad()}
+          disabled={!loaded || !snapshot.hasQuickState}
+          title={snapshot.hasQuickState ? 'Load the quick slot' : 'Nothing saved yet'}
+        >
+          Load State
+        </button>
         <button type="button" onClick={toggleMute} disabled={!loaded} aria-pressed={muted}>
           {muted ? 'Unmute' : 'Mute'}
         </button>
@@ -168,6 +182,7 @@ export function App(): React.JSX.Element {
             {tab === 'Controls' && <ControlsPanel />}
             {tab === 'Saves' && <SavesPanel restored={snapshot.savesRestored} />}
             {tab === 'States' && <StatesPanel />}
+            {tab === 'Cheats' && <CheatsPanel />}
             {/* Mounted only when open, so a closed debugger costs the emulator nothing. */}
             {tab === 'Debug' && <DebugPanel />}
           </div>

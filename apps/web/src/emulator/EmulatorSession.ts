@@ -7,6 +7,11 @@ import { loadBindings, saveBindings, type Bindings } from './input/bindings.js';
 import { SavePersistence } from './SavePersistence.js';
 import { AudioOutput } from '../audio/AudioOutput.js';
 import { stateStore, SLOT_COUNT, type StateSlot } from '../storage/StateStore.js';
+import { cheatStore, type StoredCheat } from '../storage/CheatStore.js';
+import { decodeCheat, CheatParseError, type ParsedCheat } from '@webboy/emulator';
+
+/** Slot 0 doubles as the quick slot, so the transport and the panel agree. */
+const QUICK_SLOT = 0;
 
 export type SessionStatus = 'empty' | 'running' | 'paused';
 
@@ -14,6 +19,8 @@ export interface SessionSnapshot {
   readonly status: SessionStatus;
   readonly romName: string | null;
   readonly savesRestored: boolean;
+  /** Whether the quick slot holds a state, so the Load button can disable itself. */
+  readonly hasQuickState: boolean;
   readonly error: string | null;
 }
 
@@ -43,6 +50,7 @@ class EmulatorSession {
     romName: null,
     error: null,
     savesRestored: false,
+    hasQuickState: false,
   };
   private rafId: number | null = null;
   /** True when the tab-hide handler paused us, so returning may resume automatically. */
@@ -103,6 +111,8 @@ class EmulatorSession {
       this.frameCount = 0;
       this.pacer.reset();
       this.update({ status: 'running', romName: name, error: null });
+      void this.refreshQuickState();
+      void this.restoreCheats();
       void this.restoreSave();
       // Loading a ROM is a user gesture, which is the only moment a browser will let an
       // AudioContext start.
@@ -227,6 +237,125 @@ class EmulatorSession {
         error: `Could not load state ${slot + 1}: ${cause instanceof Error ? cause.message : String(cause)}`,
       });
     }
+  }
+
+  /**
+   * The quick slot is slot 0 — the same one the States panel shows first.
+   *
+   * Save states existed for a while with no way to reach them except a tab below the
+   * fold, which is how a player concludes the feature is missing. Quick save and load
+   * belong next to Pause, where the hand already is; the panel keeps the full set with
+   * thumbnails for when you want to choose.
+   */
+  async quickSave(): Promise<void> {
+    await this.saveStateToSlot(QUICK_SLOT);
+    await this.refreshQuickState();
+  }
+
+  async quickLoad(): Promise<void> {
+    await this.loadStateFromSlot(QUICK_SLOT);
+  }
+
+  /** Cheap: one indexed read, and only on load/save, never per frame. */
+  async refreshQuickState(): Promise<void> {
+    const info = this.manager.getCore()?.getCartridgeInfo();
+    if (!info) {
+      this.update({ hasQuickState: false });
+      return;
+    }
+    const record = await stateStore.load(info.saveKey, QUICK_SLOT).catch(() => null);
+    this.update({ hasQuickState: record !== null });
+  }
+
+  /* ---------------------------------- cheats --------------------------------- */
+
+  private cheats: StoredCheat[] = [];
+
+  listCheats(): readonly StoredCheat[] {
+    return this.cheats;
+  }
+
+  /**
+   * Parses a code and adds it, enabled.
+   *
+   * Returns the error message rather than throwing: this is driven by a text field, and
+   * "that is not a code" is an ordinary outcome of typing, not an exceptional one.
+   */
+  async addCheat(code: string, label: string): Promise<string | null> {
+    try {
+      decodeCheat(code); // validate now, so a bad code never reaches storage
+    } catch (cause) {
+      return cause instanceof CheatParseError ? cause.message : String(cause);
+    }
+
+    this.cheats = [
+      ...this.cheats,
+      {
+        id: `${Date.now().toString(36)}-${this.cheats.length}`,
+        label: label.trim() || 'Unnamed code',
+        code: code.trim().toUpperCase(),
+        enabled: true,
+        createdAt: Date.now(),
+      },
+    ];
+    await this.persistCheats();
+    return null;
+  }
+
+  async setCheatEnabled(id: string, enabled: boolean): Promise<void> {
+    this.cheats = this.cheats.map((cheat) => (cheat.id === id ? { ...cheat, enabled } : cheat));
+    await this.persistCheats();
+  }
+
+  async removeCheat(id: string): Promise<void> {
+    this.cheats = this.cheats.filter((cheat) => cheat.id !== id);
+    await this.persistCheats();
+  }
+
+  /**
+   * Pushes the whole active set to the core in ONE call.
+   *
+   * Deliberately not add/remove: when the core moves to a Web Worker this becomes a single
+   * message with no ordering to get wrong.
+   */
+  private applyCheats(): void {
+    const core = this.manager.getCore();
+    if (!core || !('mmu' in core)) return;
+
+    const parsed: ParsedCheat[] = [];
+    for (const cheat of this.cheats) {
+      if (!cheat.enabled) continue;
+      try {
+        parsed.push(decodeCheat(cheat.code));
+      } catch {
+        // A stored code that no longer parses is skipped rather than fatal — the list is
+        // the player's, and refusing to run the game over one bad row would be worse.
+      }
+    }
+    (
+      core as { mmu: { cheats: { setCheats(list: readonly ParsedCheat[]): void } } }
+    ).mmu.cheats.setCheats(parsed);
+    this.notify();
+  }
+
+  private async persistCheats(): Promise<void> {
+    this.applyCheats();
+    const info = this.manager.getCore()?.getCartridgeInfo();
+    if (!info) return;
+    try {
+      await cheatStore.save(info.saveKey, info.title, this.cheats);
+    } catch (cause) {
+      this.update({
+        error: `Could not save cheats: ${cause instanceof Error ? cause.message : String(cause)}`,
+      });
+    }
+  }
+
+  private async restoreCheats(): Promise<void> {
+    const info = this.manager.getCore()?.getCartridgeInfo();
+    if (!info) return;
+    this.cheats = [...(await cheatStore.list(info.saveKey).catch(() => []))];
+    this.applyCheats();
   }
 
   async listStateSlots(): Promise<(StateSlot | null)[]> {

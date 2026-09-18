@@ -777,3 +777,55 @@ input[type='text']:focus {
   font-size: 12px;
   color: var(--ink);
 }
+
+/* ---------------------------------------------------------------------------
+   Cheat entry. Label above field, in columns like every other panel.
+   --------------------------------------------------------------------------- */
+.cheat-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px 24px;
+  align-items: end;
+  max-width: 760px;
+}
+.cheat-form label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  grid-column: 1 / -1;
+}
+.cheat-form label + input {
+  grid-column: 1 / -1;
+}
+.cheat-form .hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.cheat-form button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 8px;
+}
+
+/* The enabled toggle, drawn as the same lamp that sits on the device plate.
+   A native checkbox, so Space, label-click and the correct role come free. */
+.slots input[type='checkbox'] {
+  appearance: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--rule-strong);
+  flex: none;
+  cursor: pointer;
+  margin: 0;
+}
+.slots input[type='checkbox']:checked {
+  background: var(--signal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 25%, transparent);
+}
+.slots label {
+  cursor: pointer;
+}

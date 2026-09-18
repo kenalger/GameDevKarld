@@ -2,11 +2,14 @@ import { InputLatch } from './input/InputLatch.js';
 import { type Bindings } from './input/bindings.js';
 import { AudioOutput } from '../audio/AudioOutput.js';
 import { type StateSlot } from '../storage/StateStore.js';
+import { type StoredCheat } from '../storage/CheatStore.js';
 export type SessionStatus = 'empty' | 'running' | 'paused';
 export interface SessionSnapshot {
     readonly status: SessionStatus;
     readonly romName: string | null;
     readonly savesRestored: boolean;
+    /** Whether the quick slot holds a state, so the Load button can disable itself. */
+    readonly hasQuickState: boolean;
     readonly error: string | null;
 }
 /**
@@ -68,6 +71,38 @@ declare class EmulatorSession {
     private captureThumbnail;
     saveStateToSlot(slot: number): Promise<void>;
     loadStateFromSlot(slot: number): Promise<void>;
+    /**
+     * The quick slot is slot 0 — the same one the States panel shows first.
+     *
+     * Save states existed for a while with no way to reach them except a tab below the
+     * fold, which is how a player concludes the feature is missing. Quick save and load
+     * belong next to Pause, where the hand already is; the panel keeps the full set with
+     * thumbnails for when you want to choose.
+     */
+    quickSave(): Promise<void>;
+    quickLoad(): Promise<void>;
+    /** Cheap: one indexed read, and only on load/save, never per frame. */
+    refreshQuickState(): Promise<void>;
+    private cheats;
+    listCheats(): readonly StoredCheat[];
+    /**
+     * Parses a code and adds it, enabled.
+     *
+     * Returns the error message rather than throwing: this is driven by a text field, and
+     * "that is not a code" is an ordinary outcome of typing, not an exceptional one.
+     */
+    addCheat(code: string, label: string): Promise<string | null>;
+    setCheatEnabled(id: string, enabled: boolean): Promise<void>;
+    removeCheat(id: string): Promise<void>;
+    /**
+     * Pushes the whole active set to the core in ONE call.
+     *
+     * Deliberately not add/remove: when the core moves to a Web Worker this becomes a single
+     * message with no ordering to get wrong.
+     */
+    private applyCheats;
+    private persistCheats;
+    private restoreCheats;
     listStateSlots(): Promise<(StateSlot | null)[]>;
     /** The current state as a downloadable `.state` payload. */
     exportState(): {
