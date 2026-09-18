@@ -111,3 +111,14 @@ export { GbaApu } from './gba/audio/GbaApu.js';
 export { SoundFifo, FIFO_CAPACITY } from './gba/audio/SoundFifo.js';
 export { GbaBackup, detectBackupType } from './gba/memory/backup.js';
 export type { BackupType } from './gba/memory/backup.js';
+
+export { decodeCheat, decodeGameGenie, decodeGameShark, normaliseCode } from './cheats/codes.js';
+export {
+  CheatParseError,
+  type CheatFormat,
+  type CheatParseFailure,
+  type GameGenieCheat,
+  type GameSharkCheat,
+  type ParsedCheat,
+} from './cheats/types.js';
+export { GbCheatEngine } from './gb/cheats/GbCheatEngine.js';

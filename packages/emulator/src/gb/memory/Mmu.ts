@@ -9,6 +9,7 @@ import type { Apu } from '../apu/Apu.js';
 import { IO_READ_MASK, POST_BOOT_IO } from './ioMasks.js';
 import { OamDma } from './OamDma.js';
 import { Hdma } from './Hdma.js';
+import { GbCheatEngine } from '../cheats/GbCheatEngine.js';
 import type { StateReader, StateWriter } from '../state/StateBuffer.js';
 
 /**
@@ -39,6 +40,12 @@ export class Mmu implements MemoryBus {
 
   /** FF4D. Bit 0 requests a speed switch; bit 7 reports the current speed. */
   keyOne = 0;
+
+  /**
+   * Game Genie / GameShark. Held as a concrete non-null field so the hook below stays a
+   * monomorphic call — a nullable interface would cost more than the guard it protects.
+   */
+  readonly cheats = new GbCheatEngine();
 
   readonly hdma = new Hdma(
     { read: (a) => this.readDirect(a), write: () => undefined },
@@ -128,7 +135,13 @@ export class Mmu implements MemoryBus {
     const addr = address & 0xffff;
 
     // 0x0000-0x7FFF ROM, 0xA000-0xBFFF cartridge RAM
-    if (addr < 0x8000) return this.cartridge?.read(addr) ?? 0xff;
+    if (addr < 0x8000) {
+      const value = this.cartridge?.read(addr) ?? 0xff;
+      // A Game Genie sits on the cartridge bus and substitutes as the game reads. Hooking
+      // HERE — after the mapper, and in the function OAM DMA and HDMA also route through —
+      // means a DMA sourcing from ROM sees patched bytes too, as it would on hardware.
+      return this.cheats.patchRead(addr, value);
+    }
     if (addr < 0xa000) return this.vram[this.vramBankOffset() + addr - 0x8000]!;
     if (addr < 0xc000) return this.cartridge?.read(addr) ?? 0xff;
     if (addr < 0xd000) return this.wram[addr - 0xc000]!;
