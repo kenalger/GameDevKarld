@@ -34,6 +34,23 @@ export class CgbPaletteRam {
     if (this.autoIncrement) this.index = (this.index + 1) & 0x3f;
   }
 
+  /**
+   * The state a save must carry.
+   *
+   * The index and the auto-increment flag are as much state as the colours are: a game
+   * that saves between writing BCPS and writing BCPD would otherwise resume writing at
+   * offset 0 and corrupt a palette it never touched.
+   */
+  serializableState(): { bytes: Uint8Array; index: number; autoIncrement: boolean } {
+    return { bytes: this.bytes, index: this.index, autoIncrement: this.autoIncrement };
+  }
+
+  restoreState(s: { bytes: Uint8Array; index: number; autoIncrement: boolean }): void {
+    this.bytes.set(s.bytes);
+    this.index = s.index;
+    this.autoIncrement = s.autoIncrement;
+  }
+
   /** Returns a packed 0xRRGGBB for palette `palette`, colour `colour`. */
   colour(palette: number, colour: number): number {
     const offset = (palette & 7) * 8 + (colour & 3) * 2;

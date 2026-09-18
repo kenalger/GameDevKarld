@@ -16,7 +16,7 @@ now** — including the things that are wrong.
 | Licence | **MIT** — `LICENSE` and all three `package.json` files |
 | Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
 | Source | 16,364 lines of `.ts`/`.tsx`, excluding tests |
-| Tests | 980 passing, 1 skipped |
+| Tests | 986 passing, 1 skipped |
 | Build | 11 files, 496 KB (`apps/web/dist`); JS 397 KB, 120 KB gzipped |
 | Performance | ~20x realtime, p99 well under budget |
 
@@ -125,6 +125,20 @@ claim in this repository rests on tests and typecheck. The distance between *pas
 
 ## Recently landed
 
+- **Save states corrupted Game Boy Color graphics.** Reported from play as the game
+  turning into "graphic horror" after a load. None of the CGB register state was in the
+  save: both 64-byte colour palette RAMs, the VRAM bank, the WRAM bank, the double-speed
+  register and any HBlank HDMA in flight. All of them are intercepted in `Mmu.read`/`write`
+  and kept in dedicated fields rather than in the `io` array, so `w.bytesOf(this.io)` saved
+  none of them — a load restored a CGB game with whatever 128 bytes of colour the previous
+  moment left behind. **Save-state format is now version 3; states written before this are
+  refused, not misread.**
+
+  Twelve round-trip tests passed against this the whole time, for two reasons worth
+  remembering: every one built a **DMG** cartridge, and they saved and restored at the
+  **same moment in the same core**, where an unsaved field still held the right value in
+  memory. The six new tests each overwrite the state between the save and the load, and all
+  six were confirmed to fail without the fix.
 - **`67dd096` — the audio worklet could be served stale after a deploy.** Everything under
   `/assets/` is content-hashed; the AudioWorklet is not, and the `/*` fallback set no
   `Cache-Control`. A cached worklet would run the previous deploy's audio processor against new

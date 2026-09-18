@@ -1,4 +1,5 @@
 import type { MemoryBus } from '../../shared/types/bus.js';
+import type { StateReader, StateWriter } from '../state/StateBuffer.js';
 
 /**
  * CGB VRAM DMA (0xFF51-0xFF55).
@@ -36,6 +37,30 @@ export class Hdma {
 
   get isActive(): boolean {
     return this.active;
+  }
+
+  /**
+   * HBlank HDMA runs across many frames — 16 bytes per line — so a state taken during a
+   * transfer is an ordinary thing, not an edge case. Leaving these out meant a load
+   * resumed whatever transfer the RUNNING game was in the middle of, writing that
+   * transfer's remaining bytes into the restored VRAM at the restored destination.
+   */
+  saveState(w: StateWriter): void {
+    w.u16(this.source);
+    w.u16(this.destination);
+    w.u16(this.remaining);
+    w.bool(this.hblankMode);
+    w.bool(this.active);
+    w.bool(this.servedThisLine);
+  }
+
+  loadState(r: StateReader): void {
+    this.source = r.u16();
+    this.destination = r.u16();
+    this.remaining = r.u16();
+    this.hblankMode = r.bool();
+    this.active = r.bool();
+    this.servedThisLine = r.bool();
   }
 
   read(address: number): number {

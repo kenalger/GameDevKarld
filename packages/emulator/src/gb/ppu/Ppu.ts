@@ -742,6 +742,13 @@ export class Ppu {
       statLine: this.statLine,
       windowLine: this.windowLine,
       windowActive: this.windowActive,
+      // CGB. None of this is in the IO array: 0xFF4F and 0xFF68-0xFF6B are intercepted by
+      // the MMU and kept here, so a state without them restored a Game Boy Color game with
+      // whatever 128 bytes of colour the PREVIOUS moment left behind, and reading tiles
+      // from whichever VRAM bank happened to be mapped.
+      vramBank: this.vramBank,
+      bgPalettes: this.bgPalettes.serializableState(),
+      objPalettes: this.objPalettes.serializableState(),
     };
   }
 
@@ -763,6 +770,9 @@ export class Ppu {
     this.statLine = s.statLine;
     this.windowLine = s.windowLine;
     this.windowActive = s.windowActive;
+    this.vramBank = s.vramBank;
+    this.bgPalettes.restoreState(s.bgPalettes);
+    this.objPalettes.restoreState(s.objPalettes);
     this.startLine();
   }
 

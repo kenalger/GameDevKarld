@@ -350,16 +350,29 @@ export class Mmu implements MemoryBus {
 
   /* -------------------------------- save state -------------------------------- */
 
+  /**
+   * The CGB bank and speed registers do NOT live in `io` — 0xFF4F, 0xFF70 and 0xFF4D are
+   * intercepted in `read`/`write` and kept in dedicated fields, so writing `io` alone
+   * saved none of them. A state restored with a stale `wramBank` has the game reading its
+   * variables out of the wrong 4KB WRAM bank, and with a stale `keyOne` it runs at the
+   * wrong CPU speed.
+   */
   saveState(w: StateWriter): void {
     w.bytesOf(this.wram);
     w.bytesOf(this.hram);
     w.bytesOf(this.io);
+    w.u8(this.wramBank);
+    w.u8(this.keyOne);
+    this.hdma.saveState(w);
   }
 
   loadState(r: StateReader): void {
     r.intoArray(this.wram);
     r.intoArray(this.hram);
     r.intoArray(this.io);
+    this.wramBank = r.u8();
+    this.keyOne = r.u8();
+    this.hdma.loadState(r);
   }
 
   /** Direct VRAM/OAM access for the renderer and the debugger. Bypasses mode locking. */

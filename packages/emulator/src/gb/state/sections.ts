@@ -33,6 +33,13 @@ export function savePpu(ppu: Ppu, w: StateWriter): void {
   w.bool(s.statLine);
   w.u8(s.windowLine);
   w.bool(s.windowActive);
+  w.u8(s.vramBank);
+  w.bytesOf(s.bgPalettes.bytes);
+  w.u8(s.bgPalettes.index);
+  w.bool(s.bgPalettes.autoIncrement);
+  w.bytesOf(s.objPalettes.bytes);
+  w.u8(s.objPalettes.index);
+  w.bool(s.objPalettes.autoIncrement);
 }
 
 export function loadPpu(ppu: Ppu, r: StateReader): void {
@@ -54,6 +61,18 @@ export function loadPpu(ppu: Ppu, r: StateReader): void {
     statLine: r.bool(),
     windowLine: r.u8(),
     windowActive: r.bool(),
+    vramBank: r.u8(),
+    // Copied out of the reader's view, which is a window onto the caller's buffer.
+    bgPalettes: {
+      bytes: new Uint8Array(r.bytesOf()),
+      index: r.u8(),
+      autoIncrement: r.bool(),
+    },
+    objPalettes: {
+      bytes: new Uint8Array(r.bytesOf()),
+      index: r.u8(),
+      autoIncrement: r.bool(),
+    },
   });
 }
 

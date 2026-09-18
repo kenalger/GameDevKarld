@@ -183,3 +183,125 @@ describe.skipIf(!romAvailable)('round-trip determinism', () => {
     expect(restored.mmu.read(0xff80)).toBe(0x42);
   });
 });
+
+/**
+ * Game Boy Color state.
+ *
+ * These exist because a player reported that loading a state turned the game into
+ * "graphic horror", while all twelve tests above passed. Two blind spots put together:
+ *
+ *  1. Every test above builds a DMG cartridge, so no CGB register was ever in a state.
+ *  2. The round-trip tests save and restore at the SAME moment, in the same core. Any
+ *     field that was not written to the buffer still held the right value in memory, so
+ *     the restore looked perfect. Only loading a state from a DIFFERENT moment exposes
+ *     it — which is the only thing a player ever does.
+ *
+ * So each test below overwrites the state between the save and the load. That is the
+ * part that matters; without it every one of them passes against the bug.
+ */
+function cgbCore(): GameBoyCore {
+  const core = new GameBoyCore();
+  core.loadRom(buildRom({ cartridgeType: 0x03, romBanks: 4, ramSizeCode: 0x02, cgbFlag: 0x80 }));
+  return core;
+}
+
+describe('save state — Game Boy Color', () => {
+  it('CARRIES THE COLOUR PALETTES, which are not in the IO array', () => {
+    const core = cgbCore();
+    // Through the real registers, not by poking the arrays: 0xFF68-0xFF6B are intercepted
+    // by the MMU, and that interception is exactly what the save missed.
+    core.mmu.write(0xff68, 0x80); // BCPS: index 0, auto-increment on
+    for (let i = 0; i < 64; i++) core.mmu.write(0xff69, i ^ 0x5a);
+    core.mmu.write(0xff6a, 0x80); // OCPS
+    for (let i = 0; i < 64; i++) core.mmu.write(0xff6b, i ^ 0xa5);
+
+    const state = core.serialize();
+
+    // The game plays on and repaints every colour white.
+    core.mmu.write(0xff68, 0x80);
+    for (let i = 0; i < 64; i++) core.mmu.write(0xff69, 0xff);
+    core.mmu.write(0xff6a, 0x80);
+    for (let i = 0; i < 64; i++) core.mmu.write(0xff6b, 0xff);
+
+    core.deserialize(state);
+
+    for (let i = 0; i < 64; i++) {
+      expect(core.ppu.bgPalettes.bytes[i]).toBe(i ^ 0x5a);
+      expect(core.ppu.objPalettes.bytes[i]).toBe(i ^ 0xa5);
+    }
+  });
+
+  it('carries the palette write index and auto-increment flag', () => {
+    const core = cgbCore();
+    core.mmu.write(0xff68, 0x80 | 0x11); // index 0x11, auto-increment
+    const state = core.serialize();
+    core.mmu.write(0xff68, 0x00); // index 0, no auto-increment
+
+    core.deserialize(state);
+
+    // Reads back with bit 6 set, which is how the register always reads.
+    expect(core.mmu.read(0xff68)).toBe(0x80 | 0x40 | 0x11);
+  });
+
+  it('CARRIES THE VRAM BANK, or tiles come back from the wrong bank', () => {
+    const core = cgbCore();
+    core.mmu.write(0xff4f, 1);
+    const state = core.serialize();
+    core.mmu.write(0xff4f, 0);
+
+    core.deserialize(state);
+
+    expect(core.ppu.vramBank).toBe(1);
+  });
+
+  it('CARRIES THE WRAM BANK, or the game reads its variables from the wrong 4KB', () => {
+    const core = cgbCore();
+    core.mmu.write(0xff70, 3);
+    // Distinct bytes at the same address in two different banks.
+    core.mmu.write(0xd000, 0xab);
+    core.mmu.write(0xff70, 5);
+    core.mmu.write(0xd000, 0xcd);
+    core.mmu.write(0xff70, 3);
+
+    const state = core.serialize();
+    core.mmu.write(0xff70, 5);
+
+    core.deserialize(state);
+
+    expect(core.mmu.read(0xff70) & 0x07).toBe(3);
+    expect(core.mmu.read(0xd000)).toBe(0xab);
+  });
+
+  it('carries the double-speed register', () => {
+    const core = cgbCore();
+    core.mmu.write(0xff4d, 0x01); // armed for a speed switch
+    const state = core.serialize();
+    core.mmu.write(0xff4d, 0x00);
+
+    core.deserialize(state);
+
+    expect(core.mmu.read(0xff4d) & 0x01).toBe(1);
+  });
+
+  it('CARRIES AN HBLANK HDMA IN FLIGHT, rather than resuming the running one', () => {
+    const core = cgbCore();
+    // Source 0x8000-aligned in ROM, destination in VRAM, HBlank mode, 16 blocks.
+    core.mmu.write(0xff51, 0x00);
+    core.mmu.write(0xff52, 0x00);
+    core.mmu.write(0xff53, 0x00);
+    core.mmu.write(0xff54, 0x00);
+    core.mmu.write(0xff55, 0x80 | 0x0f); // bit 7 = HBlank mode, 16 blocks
+    expect(core.mmu.read(0xff55) & 0x80).toBe(0); // bit 7 clear while active
+
+    const state = core.serialize();
+
+    // Cancel it, the way a game ending a transfer would.
+    core.mmu.write(0xff55, 0x00);
+    expect(core.mmu.read(0xff55) & 0x80).not.toBe(0);
+
+    core.deserialize(state);
+
+    // The transfer is active again, with its own remaining length.
+    expect(core.mmu.read(0xff55) & 0x80).toBe(0);
+  });
+});
