@@ -2,8 +2,8 @@
 
 Current state, open decisions, and what to pick up next. Updated 2026-09-18.
 
-`docs/plan/` says what to build and in what order. This file says **where things actually are
-right now** — including the things that are wrong.
+`docs/plan/` says what to build and in what order. This file says **where things actually are right
+now** — including the things that are wrong.
 
 ---
 
@@ -12,10 +12,12 @@ right now** — including the things that are wrong.
 | | |
 |---|---|
 | Branch | `main`, working tree clean |
-| Tip | `33b9662` |
-| Pushed | **yes** — `origin/main` is at `33b9662` as of 2026-09-18. History kept unsquashed. |
-| Source | ~14,200 lines, excluding tests |
+| Pushed | **yes** — `origin/main` is at the tip. History kept unsquashed, see below. |
+| Licence | **MIT** — `LICENSE` and all three `package.json` files |
+| Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
+| Source | 16,364 lines of `.ts`/`.tsx`, excluding tests |
 | Tests | 980 passing, 1 skipped |
+| Build | 11 files, 496 KB (`apps/web/dist`); JS 397 KB, 120 KB gzipped |
 | Performance | ~20x realtime, p99 well under budget |
 
 Everything green: `npm test`, `typecheck`, `lint` (0 errors, 30 pre-existing `no-console`
@@ -23,9 +25,11 @@ warnings in scripts), `prettier --check`, `build`.
 
 ### Accuracy corpus — `npm run compat`
 
+Re-run and confirmed 2026-09-18. These are measurements, not recollections.
+
 | Suite | Result |
 |---|---|
-| SingleStepTests/sm83 | **500,000 / 500,000** (100%) |
+| SingleStepTests/sm83 | **500,000 / 500,000** (100%) across 500 opcodes |
 | Blargg cpu_instrs + timing | 18 / 19 — `halt_bug` times out |
 | Blargg sound (DMG + CGB) | 19 / 24 |
 | Mooneye acceptance | **60 / 66 applicable** (9 skipped: they target DMG0/MGB/SGB) |
@@ -36,22 +40,9 @@ warnings in scripts), `prettier --check`, `build`.
 
 ---
 
-## Decisions waiting on the owner
+## The one decision still waiting on the owner
 
-These block work that is otherwise ready to start.
-
-### 1. ~~The licence~~ — settled, MIT
-
-`LICENSE` is MIT, and all three `package.json` files declare `"license": "MIT"`. Decided by the
-owner 2026-09-18.
-
-What that does and does not unblock: MIT is **inbound-compatible with MIT only**. SameBoy (MIT) may
-be borrowed from with attribution. mGBA is MPL-2.0 — file-level copyleft, so its files cannot be
-copied into an MIT tree without carrying MPL on those files. Gambatte and VBA-M are GPL-2.0, which
-would force the whole project to GPL. So **GBA cheats are still blocked on the mGBA tables**; the
-answer changed from "we cannot decide" to "we must reimplement from GBATEK." See below.
-
-### 2. The A/B keyboard defaults are inverted
+### The A/B keyboard defaults are inverted
 
 On hardware **B is the left face button and A is the right one**. We map `KeyZ → a`, `KeyX → b`,
 so the left-hand key drives the right-hand button.
@@ -64,9 +55,17 @@ Proposed migration, if changed: if the stored bindings exactly equal the old def
 never customised, so upgrade silently; otherwise keep their mapping and show a dismissible note.
 This is muscle memory, so it is the owner's call.
 
-### 3. ~~Order of work~~ — done
+### Settled, for the record
 
-Both shipped. See `docs/plan/phase-16-cheats-controls.md`.
+- **Licence — MIT**, decided 2026-09-18. MIT is **inbound-compatible with MIT only**: SameBoy (MIT)
+  may be borrowed from with attribution; mGBA is MPL-2.0, whose files cannot be copied into an MIT
+  tree without carrying MPL on those files; Gambatte and VBA-M are GPL-2.0, which would force the
+  whole project to GPL. So this *decided* GBA cheats rather than unblocking them — see below.
+- **Git history — kept unsquashed.** It is a retrospective import, so intermediate commits are not
+  individually buildable and `git bisect` will not work across them. Squashing was considered and
+  rejected: the commit messages carry most of the reasoning behind the build, and that is worth
+  more than bisectability nobody uses on a solo repo. Reversible by force-push while there are no
+  forks.
 
 ---
 
@@ -75,7 +74,7 @@ Both shipped. See `docs/plan/phase-16-cheats-controls.md`.
 Ordered by how likely they are to bite.
 
 - **Mealybug 0/24 — mid-scanline register effects.** Register writes landing *during* mode 3
-  (LCDC, BGP, the window). Two hypotheses are already **disproved and recorded** in
+  (LCDC, BGP, the window). Two hypotheses are **disproved and recorded** in
   `docs/plan/phase-04-ppu.md`. **Eliminated:** mode 3's length (now exactly 172 dots, verified);
   a constant lag between the FIFO pop and the palette lookup (delaying BGP by 0-4 dots makes it
   monotonically worse). **Not eliminated, despite an earlier note here saying so:** the CPU write
@@ -99,7 +98,9 @@ Ordered by how likely they are to bite.
 ### Process defects worth fixing
 
 - `docs/testing.md` and `tests/scoreboard.md` both tell you to run `npm run screenshots`.
-  **That script does not exist** — use `npx vite-node scripts/run-screenshots.ts`.
+  **That script is not defined in `package.json`** — confirmed again 2026-09-18. The file
+  `scripts/run-screenshots.ts` does exist, so the fix is either a one-line `scripts` entry or a
+  correction to both docs. Until then: `npx vite-node scripts/run-screenshots.ts`.
 - `scripts/generate-scoreboard.ts` always exits 0, so the scoreboard is a human-reviewed diff,
   not a gate. CI runs only `lint`, `typecheck`, `test`, `build` and the `no-roms` job, so the
   only automated regression gate a PR hits is `npm test`. Corpus tests must live in `tests/unit/`
@@ -110,15 +111,32 @@ Ordered by how likely they are to bite.
 ## Blocked
 
 **Phases 09 and 10 cannot be signed off.** They need a real browser: cross-browser behaviour, a
-phone, the 10-minute audio underrun run. The Chrome extension is not connected in this
-environment, and this sandbox cannot reach a localhost server either — so the design adoption
-(`93c65cb`) is **verified structurally but nobody has looked at the rendered page**. That is
-stated in the commit message and in `mock/README.md` rather than being quietly assumed.
+phone, the 10-minute audio underrun run. The Chrome extension is not connected in this environment,
+and this sandbox cannot reach a localhost server either — so the design adoption (`93c65cb`) is
+**verified structurally but nobody has looked at the rendered page**. That is stated in the commit
+message and in `mock/README.md` rather than being quietly assumed.
+
+This is now the binding constraint on the whole project, and it is no longer a tooling problem: the
+build deploys, so **the path to unblocking it is to put it on a URL and open it.** Every "done"
+claim in this repository rests on tests and typecheck. The distance between *passes its tests* and
+*works when a person opens it* has never been measured even once.
 
 ---
 
 ## Recently landed
 
+- **`67dd096` — the audio worklet could be served stale after a deploy.** Everything under
+  `/assets/` is content-hashed; the AudioWorklet is not, and the `/*` fallback set no
+  `Cache-Control`. A cached worklet would run the previous deploy's audio processor against new
+  main-thread code, and the symptom — crackle or silence — looks like an emulator bug.
+- **`33b9662` — the project is MIT.** Plus the first push: 27 commits, a clean fast-forward from
+  the initial `Plan` commit, so nothing on the remote was overwritten.
+- **`c2d08a9` — deployable to a static host.** `.nvmrc` (Pages otherwise defaults to a Node too
+  old for Vite, the likeliest cause of a first build failing), `_headers`, `docs/deploy.md`.
+  CSP and COOP/COEP deliberately left off, with the reasons recorded in `_headers` itself.
+- **Phase 16** (`b202ff8`, `a642f61`, `9bfb0e1`, `2c857a7`) — Game Genie and GameShark for GB/GBC,
+  the Cheats panel, user-editable keyboard bindings, quick save/load on the transport row, speed
+  control and a system picker. Reasoning in `docs/plan/phase-16-cheats-controls.md`.
 - **`f70fc4c` — four silent input bugs.** Bound keys stolen from every text field; one source's
   release clearing a button another source held; macOS leaving a key stuck whenever Command was
   tapped; a pad button held across a pause staying dead. None threw, so none were visible.
@@ -128,22 +146,16 @@ stated in the commit message and in `mock/README.md` rather than being quietly a
 - **`64ed1ff` — mode 3 is 172 dots, not 175.** Two independent causes; Mooneye 57 → 60.
 - **`93c65cb` — the instrument UI direction**, adopted from `mock/`.
 
+### A pattern worth carrying forward
+
+Two phase-16 bugs were the same shape: **a working feature nobody could find.** Both were reported
+as "it's broken" and both were diagnosed, twice, as a crash that was not happening — the emulator
+was running at 60fps the whole time. A screenshot settled in seconds what an hour of reading state
+machines did not. When a live report says *broken*, ask what is on screen before reading code.
+
 ---
 
-## Built since this file was written
-
-Phase 16: Game Genie and GameShark for GB/GBC, the Cheats panel, user-editable keyboard
-bindings, and quick save/load on the transport row. Details and the decisions behind them
-are in `docs/plan/phase-16-cheats-controls.md`.
-
-Two discoverability bugs were fixed along the way, both the same shape: a working feature
-nobody could find. The key bindings now print under the device, and save/load state sits
-next to Pause instead of only in a tab below the fold.
-
 ## Research done, not yet built
-
-Five specialist reports were produced; most of their conclusions are now implemented (phase 16)
-and the reasoning is recorded in that phase doc rather than here. What remains unbuilt:
 
 **Gamepad remapping.** The pad map is still a hardcoded standard-layout index table, which is a
 latent bug for any controller the browser does not report as `mapping: "standard"` — indices mean
@@ -158,17 +170,20 @@ wrong ROM revision silently does nothing and the emulator looks broken.
 **Touch-control customisation.** Deferred deliberately: nobody has run this on a real phone, and
 making an unvalidated layout configurable ships the problem to the player instead of fixing it.
 
+---
+
 ## Suggested next steps
 
-1. ~~Push.~~ Done. The history was **kept unsquashed** — it is a retrospective import, so
-   intermediate commits are not individually buildable and `git bisect` will not work across
-   them, but the commit messages carry most of the reasoning behind the build and squashing
-   would have destroyed that to fix a property nobody uses on a solo repo. Still reversible:
-   a force-push rewrites it while the repo has no forks.
-2. **Deploy and actually look at it.** `docs/deploy.md`. Nobody has run this in a browser.
-3. **Settle the A/B default** — the last open decision, and it shapes work that is ready to start.
-4. **Mid-scanline PPU effects** — the largest remaining accuracy gap, and the one with the most
-   diagnosis already banked. Two wrong hypotheses are already eliminated.
-5. **Gamepad remapping**, which is the last obviously-missing input feature.
-6. **GBA cheats** — unblocked in principle now the licence is MIT, but the `DEADFACE` tables must
+1. **Deploy it and open it.** `docs/deploy.md` has the exact Pages settings; the account has to be
+   created by the owner. This is first not because it is easiest but because everything below is
+   built on top of an app nobody has watched run. Check the console, and confirm in the Network
+   tab that every request is same-origin — that is law 3, and it is meant to be verified
+   empirically rather than trusted.
+2. **Settle the A/B default** — the last open decision, and it shapes work that is ready to start.
+3. **Mid-scanline PPU effects** — the largest remaining accuracy gap (Mealybug 0/24 plus five
+   Mooneye `ppu/*`), and the one with the most diagnosis already banked. Two wrong hypotheses are
+   eliminated and the method for testing a third is written down.
+4. **Gamepad remapping**, the last obviously-missing input feature, and a latent correctness bug
+   rather than only a gap.
+5. **GBA cheats** — unblocked in principle now the licence is MIT, but the `DEADFACE` tables must
    be reimplemented from GBATEK rather than copied from mGBA.
