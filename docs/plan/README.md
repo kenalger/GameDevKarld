@@ -6,6 +6,9 @@ owns it*, and *how we know it is done*. One file per phase.
 Every phase has a **hard exit gate** — a test result, not an opinion. `emu-accuracy-tester` or
 `webboy-app-qa` calls the gate. A phase is not done because its author says so.
 
+> **Where things actually are right now — including what is broken — is in
+> [docs/handoff.md](../handoff.md).** This file is the plan; that one is the state.
+
 ## Phase map
 
 | # | Phase | Owner | Exit gate |
