@@ -12,10 +12,10 @@ right now** — including the things that are wrong.
 | | |
 |---|---|
 | Branch | `main`, working tree clean |
-| Tip | `a642f61`+ |
-| **Unpushed** | **21 commits. `origin/main` is still at `Plan`.** |
+| Tip | `33b9662` |
+| Pushed | **yes** — `origin/main` is at `33b9662` as of 2026-09-18. History kept unsquashed. |
 | Source | ~14,200 lines, excluding tests |
-| Tests | 975 passing, 1 skipped |
+| Tests | 980 passing, 1 skipped |
 | Performance | ~20x realtime, p99 well under budget |
 
 Everything green: `npm test`, `typecheck`, `lint` (0 errors, 30 pre-existing `no-console`
@@ -160,12 +160,15 @@ making an unvalidated layout configurable ships the problem to the player instea
 
 ## Suggested next steps
 
-1. **Push.** 17 commits exist only on this machine. Note the history is a retrospective import —
-   intermediate commits are not individually buildable, only the tip is. Squashing before the
-   first public push is easier now than later.
-2. **Settle the A/B default** — the last open decision, and it shapes work that is ready to start.
-3. **Mid-scanline PPU effects** — the largest remaining accuracy gap, and the one with the most
+1. ~~Push.~~ Done. The history was **kept unsquashed** — it is a retrospective import, so
+   intermediate commits are not individually buildable and `git bisect` will not work across
+   them, but the commit messages carry most of the reasoning behind the build and squashing
+   would have destroyed that to fix a property nobody uses on a solo repo. Still reversible:
+   a force-push rewrites it while the repo has no forks.
+2. **Deploy and actually look at it.** `docs/deploy.md`. Nobody has run this in a browser.
+3. **Settle the A/B default** — the last open decision, and it shapes work that is ready to start.
+4. **Mid-scanline PPU effects** — the largest remaining accuracy gap, and the one with the most
    diagnosis already banked. Two wrong hypotheses are already eliminated.
-4. **Gamepad remapping**, which is the last obviously-missing input feature.
-5. **GBA cheats** — unblocked in principle now the licence is MIT, but the `DEADFACE` tables must
+5. **Gamepad remapping**, which is the last obviously-missing input feature.
+6. **GBA cheats** — unblocked in principle now the licence is MIT, but the `DEADFACE` tables must
    be reimplemented from GBATEK rather than copied from mGBA.
