@@ -96,8 +96,8 @@ Worker in phase 10.
 
 ## Before making it public
 
-- **There is no `LICENSE` file**, so the repository is "all rights reserved" by default. Deploying
-  the site is unaffected, but publishing the source without a licence is probably not what you
-  want. See `docs/handoff.md`.
+- ~~There is no `LICENSE` file.~~ **Settled: MIT**, declared in `LICENSE` and in all three
+  `package.json` files. The licence covers WebBoy's own source only — no Nintendo code, no BIOS, no
+  ROMs, and the two bundled fonts keep their own OFL licences.
 - The history is a retrospective import: intermediate commits are not individually buildable, only
   the tip is. Squashing before the first public push is easier now than later.

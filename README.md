@@ -95,3 +95,9 @@ docs/plan/           16 phases, each with an owner and a hard exit gate
 WebBoy is an independent project, not affiliated with Nintendo or The Pokémon Company. It does not
 supply, host or link to game ROMs — you must provide software you are legally entitled to use. See
 [docs/legal.md](docs/legal.md).
+
+## Licence
+
+[MIT](LICENSE), covering WebBoy's own source code. The project contains no Nintendo code, no BIOS
+and no game assets. Archivo and IBM Plex Mono are bundled under the SIL Open Font License 1.1; their
+licence texts sit beside the font files in `apps/web/public/fonts/`.

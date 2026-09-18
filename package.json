@@ -1,5 +1,6 @@
 {
   "name": "webboy",
+  "license": "MIT",
   "private": true,
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

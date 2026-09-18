@@ -66,7 +66,8 @@ says so.
 
 - **GBA cheats.** They need TEA decryption plus a CPU breakpoint hook, and the `DEADFACE` reseed
   depends on two 256-byte translation tables published nowhere except inside mGBA (MPL-2.0). That
-  is a licensing decision, not a coding one, and the repo still has no `LICENSE`.
+  was a licensing decision; it is now decided. **WebBoy is MIT, so mGBA's MPL-2.0 tables cannot be
+  copied in.** The reseed must be reimplemented from GBATEK, or the feature ships without it.
 - **Gamepad remapping.** The `InputSource` shape is designed to take it without churn, but the pad
   map is still a hardcoded standard-layout index table.
 - **The A/B defaults are still inverted** relative to hardware and to mGBA/SameBoy/RetroArch. See

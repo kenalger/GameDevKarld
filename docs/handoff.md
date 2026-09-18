@@ -40,16 +40,16 @@ warnings in scripts), `prettier --check`, `build`.
 
 These block work that is otherwise ready to start.
 
-### 1. The licence — blocking
+### 1. ~~The licence~~ — settled, MIT
 
-There is **no `LICENSE` file and no `license` field in `package.json`**, so the project is "all
-rights reserved" by default, and it has a GitHub remote. Until this is set, "may we incorporate
-X" is unanswerable.
+`LICENSE` is MIT, and all three `package.json` files declare `"license": "MIT"`. Decided by the
+owner 2026-09-18.
 
-Relevant for the cheat work: SameBoy is MIT (the only reference we could borrow from), mGBA is
-MPL-2.0 (file-level copyleft), Gambatte and VBA-M are GPL-2.0 (would force WebBoy to GPL). We can
-implement everything from Pan Docs and GBATEK without touching any of them — that is the clean
-path regardless — but the repo should still declare a licence.
+What that does and does not unblock: MIT is **inbound-compatible with MIT only**. SameBoy (MIT) may
+be borrowed from with attribution. mGBA is MPL-2.0 — file-level copyleft, so its files cannot be
+copied into an MIT tree without carrying MPL on those files. Gambatte and VBA-M are GPL-2.0, which
+would force the whole project to GPL. So **GBA cheats are still blocked on the mGBA tables**; the
+answer changed from "we cannot decide" to "we must reimplement from GBATEK." See below.
 
 ### 2. The A/B keyboard defaults are inverted
 
@@ -92,7 +92,9 @@ Ordered by how likely they are to bite.
 - **`cgb-acid-hell`** off by 2 pixels.
 - **EEPROM backup** detected but unimplemented — no test ROM in the corpus covers it.
 - **GBA cheats** need TEA decryption plus a CPU breakpoint hook. The `DEADFACE` reseed depends on
-  translation tables published nowhere except inside mGBA, so it is a licensing decision.
+  two 256-byte translation tables published nowhere except inside mGBA (MPL-2.0). Now that WebBoy
+  is MIT this is decided rather than open: those tables **may not be copied**, so the reseed has to
+  be derived from GBATEK or the feature ships without `DEADFACE` support.
 
 ### Process defects worth fixing
 
@@ -161,8 +163,9 @@ making an unvalidated layout configurable ships the problem to the player instea
 1. **Push.** 17 commits exist only on this machine. Note the history is a retrospective import —
    intermediate commits are not individually buildable, only the tip is. Squashing before the
    first public push is easier now than later.
-2. **Settle the licence and the A/B default** — both block or shape work that is otherwise ready.
+2. **Settle the A/B default** — the last open decision, and it shapes work that is ready to start.
 3. **Mid-scanline PPU effects** — the largest remaining accuracy gap, and the one with the most
    diagnosis already banked. Two wrong hypotheses are already eliminated.
 4. **Gamepad remapping**, which is the last obviously-missing input feature.
-5. **GBA cheats**, once the licence is settled.
+5. **GBA cheats** — unblocked in principle now the licence is MIT, but the `DEADFACE` tables must
+   be reimplemented from GBATEK rather than copied from mGBA.
