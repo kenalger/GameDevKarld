@@ -1,5 +1,7 @@
 import { InputLatch } from './input/InputLatch.js';
+import { GamepadInput } from './input/GamepadInput.js';
 import { type Bindings } from './input/bindings.js';
+import { type PadMapping, type PadMappings } from './input/gamepad.js';
 import { AudioOutput } from '../audio/AudioOutput.js';
 import { type StateSlot } from '../storage/StateStore.js';
 import { type StoredCheat } from '../storage/CheatStore.js';
@@ -59,8 +61,10 @@ declare class EmulatorSession {
     private readonly listeners;
     readonly input: InputLatch;
     private readonly keyboard;
-    private readonly gamepad;
+    /** Public so the settings panel can read pad identity and live state without a copy. */
+    readonly gamepad: GamepadInput;
     private detachKeyboard;
+    private detachGamepad;
     private readonly saves;
     readonly audio: AudioOutput;
     private snapshot;
@@ -201,6 +205,12 @@ declare class EmulatorSession {
     setInputSuppressed(suppressed: boolean): void;
     getBindings(): Bindings;
     setBindings(bindings: Bindings): void;
+    /** Every stored pad mapping. Pads without one run the standard default, or nothing. */
+    getPadMappings(): PadMappings;
+    /** Replaces one pad's mapping and persists it. Mirrors `setBindings`. */
+    setPadMapping(padId: string, mapping: PadMapping): void;
+    /** Drops a pad's stored mapping, so it falls back to the default for its layout. */
+    resetPadMapping(padId: string): void;
     pause(): void;
     resume(): void;
     reset(): void;

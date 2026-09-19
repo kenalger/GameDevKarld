@@ -26,20 +26,31 @@ Status key: ✅ shipped and test-verified · ⚠️ shipped but not verified on 
 │      └───────────────────────────────┘                      │
 │            Arrows · Z=A · X=B · Enter=Start                 │  ← key legend
 │                                                             │
-│  [ Pause ] │ [Quick save][Quick load] │ Speed [1x] │        │  ← transport
-│            │ [Mute][Fullscreen] │ [Reset]                    │
-│                                                             │
-│  ┌ Cartridge │ Controls │ Saves │ States │ Cheats │ Debug ┐ │  ← panels
-│  │                                                        │ │
-│  └────────────────────────────────────────────────────────┘ │
+│  [Pause] │ [Save State][Load State] │ Speed [1x] │         │  ← control bar
+│          │ [Fullscreen] │ [Settings]                        │
 │                                                             │
 │  [ on-screen D-pad and buttons — touch devices only ]       │
 │  Disclaimer: not affiliated with Nintendo. Bring your own   │
 └─────────────────────────────────────────────────────────────┘
+
+        Settings opens a right-hand drawer, not a modal —
+        the settings change the picture you are looking at,
+        so it has to stay visible. The game pauses while
+        it is open, or the arrow keys reading the menu
+        would also drive the character.
+
+        Save states · Cheats · Input · Emulation · Audio
+        · Saves · Cartridge · Advanced  (+ Debug, behind
+        the Developer-mode switch)
 ```
 
-The transport row is **grouped, not a flat row of eight equal buttons** — playback, save state,
-speed, output, reset. Pause and Resume are one toggling button, so no control is ever dead.
+The control bar carries **quick controls only** — everything that is configuration lives behind
+Settings. Pause and Resume are one toggling button, so no control is ever dead. Mute sits in
+Settings › Audio and Reset in Settings › Emulation; Reset in particular was one slip away from
+Save State, which is a bad place for "throw the last hour away".
+
+No reference emulator surveyed — eight of them, read at source level — puts configuration in the
+window during play, and none shows a debugger to players by default.
 
 ---
 
@@ -217,18 +228,27 @@ freeze between sessions.
 | **Status** | ✅ — verified 1000-frame identical after a round trip |
 | **Where** | Quick save / quick load on the transport row, and the States panel |
 
-Four slots per cartridge. **Slot 0 is the quick slot**, so the transport row and the panel agree
-about what "quick" means. Each slot captures a **thumbnail** at save time, because "slot 3" tells
-you nothing a month later and a picture of where you were tells you everything.
+**Eight slots per cartridge** — what mGBA, RetroArch and SameBoy offer. **Slot 1 is the quick
+slot**, tagged as such in the list with a line saying that the control bar's Save State button
+writes to it. That labelling is not decoration: without a tag, a player using the
+quick button had three real slots and no way to know the two things were related.
 
-Quick save and quick load sit next to Pause, where your hand already is. They were moved there
-after save states spent a while reachable only through a tab below the fold — which is how a player
-concludes a feature is missing.
+Each slot captures a **thumbnail** at save time, because "slot 3" tells you nothing a month later
+and a picture of where you were tells you everything. A save made from the control bar appears in
+an open panel immediately.
+
+Save State and Load State sit next to Pause, where your hand already is — save states spent a
+while reachable only through a tab below the fold, which is how a player concludes a feature is
+missing.
 
 States **export and import** as `.state` files. A state carries a format magic, a version and a
 32-bit cartridge fingerprint, and is **refused** if any of them disagree — a state from another game
 or another console cannot be resumed into the wrong ROM. A state that silently misparses is far
 worse than one that refuses to load: the game appears to work, then corrupts.
+
+The format is at **version 3**. States written before the Game Boy Color fix are refused, and the
+panel says so up front — *"older format — cannot be loaded"*, with Load disabled — rather than
+letting you click a slot with a thumbnail and a timestamp only to have it fail.
 
 ---
 
@@ -270,7 +290,12 @@ the latter, a code for the wrong ROM revision silently does nothing and the emul
 | | |
 |---|---|
 | **Status** | ✅ |
-| **Where** | The Debug panel |
+| **Where** | Settings › Debug, behind the **Developer mode** switch |
+
+Off by default and persisted, because no reference emulator shows a debugger to players — ares
+calls its panel "Developer", Mesen isolates it in its own top-level menu, and RetroArch, EmulatorJS
+and Delta ship none. The frame-rate readout is behind a separate Show-performance switch, also off
+by default.
 
 - **CPU registers** — A/F/B/C/D/E/H/L, PC, SP, IME, halted, cycle count
 - **Disassembly** around the program counter

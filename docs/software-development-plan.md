@@ -78,10 +78,11 @@ working style.
 ```text
    apps/web  (React + Vite, knows about the browser)
    ┌──────────────────────────────────────────────┐
-   │  App.tsx — tabs, panels, disclaimer          │
+   │  App.tsx — control bar, disclaimer           │
    │  Display  — <canvas>, 160×144 or 240×160     │
-   │  RomPicker, Controls, Saves, States,         │
-   │  Cheats, Debug panels                        │
+   │  SettingsDrawer — Save states, Cheats,       │
+   │    Input, Emulation, Audio, Saves,           │
+   │    Cartridge, Advanced (+ Debug)             │
    │                                              │
    │  EmulatorSession  ◀── owns the frame loop,   │
    │    (module singleton, OUTSIDE React)         │
@@ -227,7 +228,7 @@ Three IndexedDB databases, all local, all versioned:
 | Database | Store | Holds |
 |---|---|---|
 | `webboy` | `saves` | Battery-backed cartridge SRAM, keyed by cartridge, in `.sav` layout |
-| `webboy-states` | `states` | Save states, 4 slots per cartridge (slot 0 doubles as the quick slot) |
+| `webboy-states` | `states` | Save states, **8 slots** per cartridge (slot 1 is the quick slot) |
 | `webboy-cheats` | `cheats` | Cheat codes exactly as typed, plus enabled flags |
 
 Battery saves are written debounced off a `consumeSaveRamDirty()` flag and flushed on `pagehide`
@@ -240,6 +241,16 @@ GBA so "wrong console" is a clean refusal rather than a misparse), a **format ve
 bumped whenever any subsystem's layout changes**, and a 32-bit cartridge fingerprint so a state
 cannot be resumed into the wrong ROM. A state that silently misparses is far worse than one that
 refuses to load: the game appears to work, then corrupts.
+
+**The format is at version 3, and the rule has already been exercised in anger.** No CGB register
+state was in the container at all — both colour palette RAMs, the VRAM and WRAM banks, the
+double-speed register, any HBlank HDMA in flight — because all of it is intercepted in
+`Mmu.read`/`write` and held in dedicated fields rather than the `io` array. Loading a state turned
+a Game Boy Color game into, as it was reported from play, "graphic horror". Twelve round-trip tests
+had passed against this the whole time for two reasons worth remembering: every one built a **DMG**
+cartridge, and every one saved and restored **at the same moment in the same core**, where an
+unsaved field still holds the right value in memory. The tests added with the fix overwrite the
+state between save and load, and each was confirmed to fail without it.
 
 ---
 

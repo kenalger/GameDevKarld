@@ -3,6 +3,7 @@ import { session, type SystemPreference } from '../emulator/EmulatorSession.js';
 import { StatesPanel } from './StatesPanel.js';
 import { CheatsPanel } from './CheatsPanel.js';
 import { ControlsPanel } from './ControlsPanel.js';
+import { GamepadPanel } from './GamepadPanel.js';
 import { SavesPanel } from './SavesPanel.js';
 import { RomInfoPanel } from './RomInfoPanel.js';
 import { DebugPanel } from './DebugPanel.js';
@@ -187,7 +188,16 @@ export function SettingsDrawer({ onClose }: { onClose: () => void }): React.JSX.
               <>
                 {active === 'states' && <StatesPanel />}
                 {active === 'cheats' && <CheatsPanel />}
-                {active === 'input' && <ControlsPanel />}
+                {active === 'input' && (
+                  <>
+                    <ControlsPanel />
+                    {/* Two panels in one section: the keyboard is the control everyone
+                        has, the pad is the one some people have. */}
+                    <div style={{ marginTop: 'calc(var(--gap) * 2)' }}>
+                      <GamepadPanel />
+                    </div>
+                  </>
+                )}
                 {active === 'emulation' && (
                   <EmulationSection loaded={loaded} preference={snapshot.systemPreference} />
                 )}

@@ -56,7 +56,7 @@ app comes and takes: a stable framebuffer, a pushed audio sink, dirty flags. Not
 
 | Module | Responsibility |
 |---|---|
-| `App.tsx` | Layout, tabs, transport row. Subscribes to session status; renders on status change only |
+| `App.tsx` | Layout and the control bar. Subscribes to session status; renders on status change only |
 | `EmulatorSession` | **The centre.** Owns the core, the rAF loop, input, audio, persistence, cheats, states |
 | `FramePacer` | Turns wall-clock time into a whole number of frames to run. Pure, unit-tested |
 | `InputLatch` | Merges keyboard/touch/gamepad into one mask; sticky bits so no tap is lost |
@@ -67,7 +67,8 @@ app comes and takes: a stable framebuffer, a pushed audio sink, dirty flags. Not
 | `SaveStore` · `StateStore` · `CheatStore` | The three IndexedDB databases |
 | `Display` | Mounts the `<canvas>`, hands the element to the session, then never re-renders |
 | `StatusBar` | Live counters written straight to DOM text nodes on a ~4 Hz interval |
-| Panels (`RomInfo`, `Controls`, `Saves`, `States`, `Cheats`, `Debug`) | Feature UIs; all call session methods |
+| `SettingsDrawer` | The one configuration surface. Owns section nav, focus trap, and pausing while open |
+| Panels (`RomInfo`, `Controls`, `Saves`, `States`, `Cheats`, `Debug`) | Feature UIs inside the drawer; all call session methods |
 
 ### Core side — `packages/emulator/src`
 
@@ -109,7 +110,7 @@ session.loadRom(name, data)
  │              there is no boot ROM, and test ROMs depend on those values
  ├─ pacer.reset(); frameCount = 0
  ├─ update({status:'running', romName, activeSystem})   → the ONE React re-render
- ├─ refreshQuickState()   does slot 0 hold a state?  (enables Quick load)
+ ├─ refreshQuickState()   does the quick slot hold a state?  (enables Load State)
  ├─ restoreCheats()       cheatStore.list(saveKey)  → applyCheats()
  ├─ restoreSave()         saveStore.load(saveKey)   → core.loadSaveData()
  ├─ startAudio()          a file pick is a USER GESTURE — the only moment a
@@ -240,10 +241,21 @@ save:  core.serialize()            StateWriter: magic + version + fingerprint + 
        captureThumbnail()          offscreen canvas → PNG data URL; failure returns null,
                                    because a thumbnail is decoration and must never block a save
        stateStore.save(saveKey, slot, bytes, thumbnail)
+       statesRevision++            an open panel re-reads ONLY on this counter — listing pulls
+                                   every slot's full bytes out of IndexedDB, and pause/resume
+                                   must not pay for that across eight slots
 
 load:  stateStore.load(saveKey, slot)
        core.deserialize(buffer)    refuses on wrong magic / version / fingerprint
        pacer.reset(); paint()      the screen must show the restored frame immediately
+
+list:  readStateHeader()           reads the six-byte container header WITHOUT parsing the state,
+                                   so a slot this build cannot load is labelled as such instead of
+                                   failing on click. It returns the version rather than a boolean:
+                                   labelling requires reading a header `deserialize` must reject.
+                                   Its tests cover a view at a non-zero byte offset, because
+                                   IndexedDB hands back windows onto a larger buffer and
+                                   `new DataView(data.buffer)` would read the wrong six bytes.
 ```
 
 The container is owned by one place; **every subsystem supplies its own `serialize`/`deserialize`**.
@@ -430,9 +442,10 @@ Where features touch each other is where the bugs live. This is the map.
 | **Cheats** | **Save states** | Cheat effects are in RAM, so they ride along in a state | A state taken with cheats on restores those RAM values |
 | **Save states** | **Battery saves** | Independent: one is a machine snapshot, one is the game's own file | Loading a state does not rewrite `.sav` until the game next writes SRAM |
 | **ROM swap** | **Battery saves** | Outgoing core is flushed *before* the new one loads | Otherwise the last second of the previous game is lost |
-| **Save key** | **Everything persisted** | Saves, all four state slots and cheats share `saveKey` | Anything that alters ROM bytes orphans all three at once |
+| **Save key** | **Everything persisted** | Saves, all eight state slots and cheats share `saveKey` | Anything that alters ROM bytes orphans all three at once |
 | **Rebinding** | **All input sources** | Capture suppresses keyboard *and* releases touch + pad | A resting stick would otherwise hijack the capture |
 | **Bound keys** | **Text fields** | Keyboard handler ignores events from inputs | Typing a cheat code would otherwise drive the game |
+| **Settings drawer** | **Input** | The drawer pauses the game while open | Arrow keys reading the menu would otherwise drive the character |
 | **Debugger** | **Frame loop** | `stepInstruction`/`stepFrame` run outside rAF, then `paint()` | Stepping without painting looks frozen |
 | **Canvas** | **Framebuffer** | One `ImageData`, allocated in `attachCanvas`, mutated per frame | Reallocating per frame is a GC pause per frame |
 | **PPU mode** | **CPU access** | PPU defines modes; MMU enforces the lockout | Two owners, one rule — invent it in one place only |

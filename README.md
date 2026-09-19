@@ -50,8 +50,8 @@ Re-run 2026-09-18 with `npm run compat`. These are measurements, not recollectio
 | Save-state round-trip | **1000-frame identical** |
 | Core performance | **~20× realtime**, p99 well under frame budget |
 
-Unit + harness suite: **980 passing, 1 skipped** (`npm test`). Production build: 397 KB JS,
-**120 KB gzipped**.
+Unit + harness suite: **1044 passing, 1 skipped** (`npm test`). Production build: 416 KB JS,
+**125 KB gzipped**.
 
 ### Known gaps
 
@@ -83,8 +83,9 @@ Load a ROM you are legally entitled to use, then:
 | **Shift** | Select |
 
 All rebindable. Touch controls appear on phones and tablets; standard gamepads work too. Speed runs
-0.25×–8×, save states have four slots plus quick save/load, and battery saves import and export as
-ordinary `.sav` files. [Everything the app does, in detail](docs/features.md).
+0.25×–8×, save states have eight slots with thumbnails, and battery saves import and export as
+ordinary `.sav` files. Everything that is configuration lives behind one Settings drawer; the
+control bar keeps only Pause, Save/Load State, Speed and Fullscreen. [Everything the app does, in detail](docs/features.md).
 
 ## Quick start
 

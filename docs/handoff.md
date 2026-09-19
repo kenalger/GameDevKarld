@@ -1,6 +1,6 @@
 # Handoff
 
-Current state, open decisions, and what to pick up next. Updated 2026-09-18.
+Current state, open decisions, and what to pick up next. Updated 2026-09-19.
 
 `docs/plan/` says what to build and in what order. This file says **where things actually are right
 now** — including the things that are wrong.
@@ -12,20 +12,25 @@ now** — including the things that are wrong.
 | | |
 |---|---|
 | Branch | `main`, working tree clean |
-| Pushed | **yes** — `origin/main` is at the tip. History kept unsquashed, see below. |
+| Pushed | **yes** — the local `origin/main` ref is at the tip, 0 commits ahead. Not re-fetched, so this is the last known remote position. History kept unsquashed, see below. |
 | Licence | **MIT** — `LICENSE` and all three `package.json` files |
 | Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
-| Source | 16,364 lines of `.ts`/`.tsx`, excluding tests |
-| Tests | 1004 passing, 1 skipped |
-| Build | 11 files, 496 KB (`apps/web/dist`); JS 397 KB, 120 KB gzipped |
+| Source | **15,484** lines of non-test `.ts`/`.tsx` under `packages/emulator/src` + `apps/web/src`; 23,072 including tests, harness and scripts |
+| Tests | **1044 passing, 1 skipped**, 30 files |
+| Build | 11 files (`apps/web/dist`); JS **416 KB**, **125 KB gzipped**, CSS 17 KB |
+| Save-state format | **version 3.** States written by earlier builds are refused, not misread |
 | Performance | ~20x realtime, p99 well under budget |
 
-Everything green: `npm test`, `typecheck`, `lint` (0 errors, 30 pre-existing `no-console`
-warnings in scripts), `prettier --check`, `build`.
+Everything green, all re-run 2026-09-19: `npm test`, `typecheck`, `lint` (0 errors, 30 pre-existing
+`no-console` warnings in scripts), `prettier --check`, `build`.
+
+> The earlier figure of "16,364 lines excluding tests" is superseded rather than contradicted — it
+> counted a wider set of files. The two numbers above each name their own scope.
 
 ### Accuracy corpus — `npm run compat`
 
-Re-run and confirmed 2026-09-18. These are measurements, not recollections.
+Last re-run and confirmed 2026-09-18 — **not** re-run on 2026-09-19, and no core code has
+changed since. These are measurements, not recollections.
 
 | Suite | Result |
 |---|---|
@@ -98,9 +103,17 @@ Ordered by how likely they are to bite.
 ### Process defects worth fixing
 
 - `docs/testing.md` and `tests/scoreboard.md` both tell you to run `npm run screenshots`.
-  **That script is not defined in `package.json`** — confirmed again 2026-09-18. The file
+  **That script is still not defined in `package.json`** — confirmed again 2026-09-19. The file
   `scripts/run-screenshots.ts` does exist, so the fix is either a one-line `scripts` entry or a
   correction to both docs. Until then: `npx vite-node scripts/run-screenshots.ts`.
+- **`docs/graphics.md` still says mode 3's measured baseline is 175 dots.** It has been exactly
+  172 since `64ed1ff`, which this file already records. One stale number in the document whose
+  whole job is to explain the PPU's timing model.
+- **The UI docs drift fastest, because the UI is what keeps changing.** `docs/features.md`,
+  `docs/how-it-works.md` and `docs/software-development-plan.md` were written on 2026-09-18 and
+  were already wrong two commits later (slot count, quick-slot numbering, the tab strip that is
+  now a drawer). Corrected on 2026-09-19. Anything that changes the control bar, the drawer or
+  the slot model should update those three in the same commit.
 - `scripts/generate-scoreboard.ts` always exits 0, so the scoreboard is a human-reviewed diff,
   not a gate. CI runs only `lint`, `typecheck`, `test`, `build` and the `no-roms` job, so the
   only automated regression gate a PR hits is `npm test`. Corpus tests must live in `tests/unit/`
@@ -121,10 +134,52 @@ build deploys, so **the path to unblocking it is to put it on a URL and open it.
 claim in this repository rests on tests and typecheck. The distance between *passes its tests* and
 *works when a person opens it* has never been measured even once.
 
+**The unverified surface is growing, which makes this worse rather than merely unchanged.** Three
+of the last five commits changed what the app looks like — the settings drawer, the fullscreen and
+responsive-layout rewrite, the eight-slot states panel — and every one of them says, in its own
+commit message, that it was not seen in a browser. `d98fdee` in particular worked its arithmetic
+through in comments *precisely so it could be checked against a real window*; nobody has checked
+it. The layout maths, the drawer at 375px, the scrim, the sheet inside fullscreen, the 44px touch
+targets and the safe-area insets are all reasoned, all plausible, and all unobserved.
+
 ---
 
 ## Recently landed
 
+- **The save states were there; three separate things hid them** (`bf57ee5`). Reported as "why
+  can't I see my save states?". Only one of the three causes was the slot count. There were four
+  slots and the transport row's Save State button silently overwrote the quick one, so a player
+  using that button had three real slots and no hint the two were related — now **eight**, which
+  is what mGBA, RetroArch and SameBoy offer, with slot 1 tagged "quick" and a line saying what
+  writes to it. A quick-save also left no trace in an open States panel, because the list was read
+  once on mount; it now re-reads on a `statesRevision` counter rather than on every notify, since
+  listing reads every slot's full bytes out of IndexedDB and pause/resume should not pay for that
+  — which matters twice as much with eight slots. And the version-3 bump below had left pre-fix
+  states listed as loadable, thumbnail and all, failing only on click; `readStateHeader` reads the
+  six-byte container header without parsing the state, so they now say "older format — cannot be
+  loaded" up front.
+- **The layout had one axis, and fullscreen had none** (`d98fdee`). One root cause behind three
+  bugs: `.screen` is `width: 100%` with an `aspect-ratio`, which bounds the picture on one axis,
+  and every window wider than 10:9 — every laptop — runs out of height first. Fullscreen showed
+  the ordinary page on a black background (a 620px device floating on a 12" MacBook, tab strip and
+  disclaimer still underneath); the device was taller than a laptop window, so picture and controls
+  could not be on screen together at any zoom; and there was no mobile layout at all — the only
+  breakpoints in 1,012 lines of CSS were dark mode and `pointer: coarse`. Adds a phone breakpoint,
+  44px minimum touch targets on coarse pointers (WCAG 2.5.5 — 9px of padding on an 11px label is a
+  31px target), and safe-area insets, which `viewport-fit=cover` in `index.html` had needed all
+  along.
+- **The project documented itself** (swept into `d98fdee`). Three new documents, written against
+  the code and a re-run of the suite rather than from the existing docs:
+  `docs/software-development-plan.md` (the product, the process, the quality bar, measured status,
+  a forward plan where every item carries an exit condition), `docs/features.md` (the feature
+  catalogue, including a "deliberately absent" section so decisions are not mistaken for a
+  backlog) and `docs/how-it-works.md` (module responsibilities, ten traced walkthroughs, a feature
+  interaction map naming the trap in each pairing, and ten invariants that fail silently). The
+  README was rewritten: its Status section still claimed M3/First Playable while phases 06–16 had
+  landed, and its Layout tree predated the GBA, audio, cheat and persistence code.
+
+  All three were **already stale two commits later** and were corrected on 2026-09-19 — see the
+  process defect above.
 - **The settings were scattered across the page; now they are behind one door.** Six tabs —
   Cartridge, Controls, Saves, States, Cheats, Debug — sat expanded under the device while you
   played, with no Settings entry point anywhere. Two agents were used: one read the menu
@@ -216,6 +271,14 @@ making an unvalidated layout configurable ships the problem to the player instea
    built on top of an app nobody has watched run. Check the console, and confirm in the Network
    tab that every request is same-origin — that is law 3, and it is meant to be verified
    empirically rather than trusted.
+
+   It has been first on this list for several sessions, and the cost of it staying first is
+   compounding: the last five commits added a drawer, a responsive layout, a fullscreen mode and
+   an eight-slot panel on top of an app nobody has seen. **The list of things to check on that
+   first open is now specific**, which at least makes the session short: the drawer and scrim at
+   375px, the sheet inside fullscreen, the `d98fdee` layout arithmetic against a real window
+   (~420px device at 1152x720; a 693x624 picture in fullscreen), the 44px touch targets, the
+   safe-area insets on a notched phone, and a ten-minute run listening for audio underruns.
 2. **Settle the A/B default** — the last open decision, and it shapes work that is ready to start.
 3. **Mid-scanline PPU effects** — the largest remaining accuracy gap (Mealybug 0/24 plus five
    Mooneye `ppu/*`), and the one with the most diagnosis already banked. Two wrong hypotheses are

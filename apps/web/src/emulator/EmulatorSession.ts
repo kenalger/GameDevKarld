@@ -4,6 +4,12 @@ import { InputLatch } from './input/InputLatch.js';
 import { KeyboardInput } from './input/KeyboardInput.js';
 import { GamepadInput } from './input/GamepadInput.js';
 import { loadBindings, saveBindings, type Bindings } from './input/bindings.js';
+import {
+  loadPadMappings,
+  savePadMappings,
+  type PadMapping,
+  type PadMappings,
+} from './input/gamepad.js';
 import { SavePersistence } from './SavePersistence.js';
 import { AudioOutput } from '../audio/AudioOutput.js';
 import { stateStore, SLOT_COUNT, type StateSlot } from '../storage/StateStore.js';
@@ -85,8 +91,10 @@ class EmulatorSession {
 
   readonly input = new InputLatch();
   private readonly keyboard = new KeyboardInput(this.input);
-  private readonly gamepad = new GamepadInput(this.input);
+  /** Public so the settings panel can read pad identity and live state without a copy. */
+  readonly gamepad = new GamepadInput(this.input);
   private detachKeyboard: (() => void) | null = null;
+  private detachGamepad: (() => void) | null = null;
 
   private readonly saves = new SavePersistence((message) => this.update({ error: message }));
   readonly audio = new AudioOutput();
@@ -599,6 +607,13 @@ class EmulatorSession {
     this.keyboard.setBindings(loadBindings());
     this.detachKeyboard = this.keyboard.attach();
 
+    // The Gamepad API has exactly two events, and both are correctness, not polish: a pad
+    // already plugged in when the page loaded is invisible to getGamepads() until one of
+    // them fires, and a pad unplugged mid-press has to release even though the frame loop
+    // may be stopped.
+    this.gamepad.setMappings(loadPadMappings());
+    this.detachGamepad = this.gamepad.attach();
+
     // Returning to the tab resumes the game without a gesture, so the AudioContext may
     // refuse to wake. These are the cheapest possible listeners — they bail on the first
     // line unless audio is actually waiting — and they are what gets sound back for a
@@ -609,6 +624,8 @@ class EmulatorSession {
     return () => {
       this.detachKeyboard?.();
       this.detachKeyboard = null;
+      this.detachGamepad?.();
+      this.detachGamepad = null;
       window.removeEventListener('pointerdown', this.wakeAudioOnGesture);
       window.removeEventListener('keydown', this.wakeAudioOnGesture);
     };
@@ -633,6 +650,29 @@ class EmulatorSession {
   setBindings(bindings: Bindings): void {
     this.keyboard.setBindings(bindings);
     saveBindings(bindings);
+    this.update({});
+  }
+
+  /** Every stored pad mapping. Pads without one run the standard default, or nothing. */
+  getPadMappings(): PadMappings {
+    return this.gamepad.getMappings();
+  }
+
+  /** Replaces one pad's mapping and persists it. Mirrors `setBindings`. */
+  setPadMapping(padId: string, mapping: PadMapping): void {
+    const next: Record<string, PadMapping> = { ...this.gamepad.getMappings() };
+    next[padId] = mapping;
+    this.gamepad.setMappings(next);
+    savePadMappings(next);
+    this.update({});
+  }
+
+  /** Drops a pad's stored mapping, so it falls back to the default for its layout. */
+  resetPadMapping(padId: string): void {
+    const next: Record<string, PadMapping> = { ...this.gamepad.getMappings() };
+    delete next[padId];
+    this.gamepad.setMappings(next);
+    savePadMappings(next);
     this.update({});
   }
 
