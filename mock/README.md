@@ -102,14 +102,19 @@ cliché, which is its own kind of slop.
 
 ## Layout
 
+> **Superseded 2026-09-18 — the tab strip is gone.** See "The panels moved behind a door" at
+> the end of this file. `webboy-ui.html` still renders the old arrangement; the diagram below
+> is kept because the rest of it (the device as the only filled box, the centred column) is
+> still what ships.
+
 ```
 masthead ─────────────────────────────
              [ device ]                 ← centred, max 620px, the only filled box
            transport row
-        fps · frames · target
+        fps · frames · target           ← now opt-in, off by default
 ──────────────────────────────────────
- tabs
- panel content, full width, in COLUMNS
+ tabs                                   ← REMOVED, now a Settings drawer
+ panel content, full width, in COLUMNS  ← REMOVED
 ──────────────────────────────────────
 ```
 
@@ -177,3 +182,56 @@ Two differences from the mock, both on purpose:
 components use has a rule and no token reference dangles — but this sandbox cannot reach a
 localhost server, so nobody has actually looked at the rendered page. That check belongs with
 the phase 09/10 browser work, which is blocked on the same thing.
+
+## The panels moved behind a door — 2026-09-18
+
+The tab strip this file designed was wrong, and a player said so: *"why are you scattering all
+the settings stuff right there? why is there no settings access?"*
+
+Six tabs — Cartridge, Controls, Saves, States, Cheats, Debug — sat expanded under the device,
+permanently, while you played, and there was no settings entry point at all.
+
+**Eight emulators were read at source level before changing it.** The result was unanimous and
+left no room for taste:
+
+| | Persistent during play |
+|---|---|
+| mGBA, ares, Mesen 2, SameBoy | a thin menu bar, nothing else |
+| RetroArch, BGB, EmulatorJS, Delta, Provenance | **nothing at all** |
+
+RetroArch ships `DEFAULT_FPS_SHOW false` — even the frame counter is opt-in. And **none of the
+eight shows a debugger to a player**: ares names its panel "Developer", Mesen isolates it in
+its own top-level menu, and RetroArch, EmulatorJS and Delta ship none.
+
+What ships now:
+
+```
+masthead ─────────────────────────────
+             [ device ]
+   pause · save · load · speed · fullscreen · SETTINGS
+           key legend
+        fps · frames · target           ← only if switched on
+──────────────────────────────────────
+                                        (nothing else)
+```
+
+Everything else is in a right-hand **drawer**: Save states · Cheats · Input · Emulation ·
+Audio · Saves · Cartridge · Advanced, with Debug appearing only under a Developer switch.
+
+A drawer rather than a modal on the Nielsen Norman distinction — a modal is an interruption
+you want the user to deal with, a drawer is right when the underlying screen has to stay
+visible. Almost everything in it changes the picture you are looking at.
+
+Two deviations from the reference, both deliberate and both toward discoverability:
+
+- **The control bar does not auto-hide**, although EmulatorJS hides its own after 3000ms.
+- **The key legend stays on the page.** It is information, not configuration, and on a desktop
+  the keyboard is the only way to play.
+
+This project has shipped three separate bugs that were all *a working feature nobody could
+find*, and nobody can see the rendering in this environment. Visibly clumsy beats invisibly
+clever until someone has actually looked at it.
+
+**`webboy-ui.html` has not been updated** and still renders the tab strip. Rebuilding the mock
+means judging a layout by eye, which is exactly what cannot be done here; it should be redone
+alongside the phase 09/10 browser work.
