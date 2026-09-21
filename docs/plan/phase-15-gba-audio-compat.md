@@ -5,8 +5,19 @@
 **Status:** ⚠️ **Audio, backup and BIOS built; commercial compatibility NOT measured** — 2026-09-21.
 
 > **The suite was reporting 7/7 while running 7 of the 9 ROMs in the corpus.** `scripts/run-gba-cpu.ts`
-> had a hardcoded list and `stripes.gba` and `bios.gba` were not in it. Both now run. `bios.gba`
-> passes; `stripes.gba` does not, and is recorded as an open failure rather than quietly skipped.
+> had a hardcoded list and `stripes.gba` and `bios.gba` were not in it. Both now run, and both pass.
+>
+> `stripes.gba` was never an emulator bug. It is one of jsmolka's `ppu/` demos, not a framework ROM:
+> it has no numbered assertions and prints no text, so reading a result line off a mode-4 framebuffer
+> could only ever report failure. It now has an image verdict — the whole frame diffed against a
+> reference derived from `stripes.asm` and GBATEK's BG Control / text screen entry sections — and is
+> **pixel-exact over all 38400 pixels**. `shades.gba` was given the same treatment while the
+> harness was open and is pixel-exact too, taking the corpus to **10/10**.
+>
+> Two hot-path allocations were removed from `GbaPpu` in passing (charter law 7): `decodeBg`
+> returned a fresh object literal from a 4-priority x 4-background loop, and `spriteSize` rebuilt a
+> nested array table for all 128 OAM entries on every scanline. Both are now allocation-free and
+> guarded by a counter test, not a timing threshold.
 >
 > Fixing `bios.gba` exposed that **no GBA game could take an interrupt or call a SWI**: with no BIOS
 > image, `softwareInterrupt` branched into an all-zero array, `noteFetch` was dead code, and the CPU

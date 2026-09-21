@@ -16,7 +16,7 @@ now** — including the things that are wrong.
 | Licence | **MIT** — `LICENSE` and all three `package.json` files |
 | Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
 | Source | **15,484** lines of non-test `.ts`/`.tsx` under `packages/emulator/src` + `apps/web/src`; 23,072 including tests, harness and scripts |
-| Tests | **1116 passing, 1 skipped**, 32 files |
+| Tests | **1140 passing, 1 skipped**, 32 files |
 | Build | 11 files (`apps/web/dist`); JS **416 KB**, **125 KB gzipped**, CSS 17 KB |
 | Save-state format | **version 3.** States written by earlier builds are refused, not misread |
 | Performance | ~20x realtime, p99 well under budget |
@@ -41,7 +41,7 @@ changed since. These are measurements, not recollections.
 | dmg-acid2, cgb-acid2 | **pixel-exact** |
 | cgb-acid-hell | 2 / 23040 pixels differ (x=80, y=68–69) |
 | Mealybug Tearoom | **0 / 24** — reported, not gated |
-| jsmolka gba-tests | **8 / 9** — `stripes` fails; `bios` now passes |
+| jsmolka gba-tests | **10 / 10** — `shades`, `stripes` and `bios` now pass |
 
 ---
 
@@ -94,15 +94,22 @@ Ordered by how likely they are to bite.
   wave-unit modelling rather than more tuning.
 - **`halt_bug`** times out at 2500 frames.
 - **`cgb-acid-hell`** off by 2 pixels.
-- **`stripes.gba`** fails — the last GBA ROM in the corpus that does not pass. Not yet diagnosed.
-- **The GB core's APU save state has the same per-channel gap the GBA one just had.**
-  `gb/state/sections.ts:saveApu` writes `powered`, the sequencer, both volumes, panning and wave
-  RAM — and no per-channel state at all. The channel classes now have `saveState`/`loadState`, so
-  the fix is small. Third instance of this bug class; see below.
-- **GBA wave RAM is effectively unimplemented.** `GbaApu.psgTarget` has no upper bound on its
-  channel-4 branch, so writes to `0x04000090-0x9F` are misrouted into channel 4's registers.
-- **8-bit writes to GBA sound registers are silently dropped** — `GbaMmu.writeIo` puts them in the
-  `io` array without ever calling the APU.
+- ~~The GB core's APU save state has the same per-channel gap~~ — **fixed**, and it was the
+  **third** sighting of one bug class: state held in a subsystem's own objects, never reaching
+  the array the container serializes. CGB registers, then the GBA PSG channels, then these. Each
+  time, the round-trip tests passed because they restored into the same moment they saved. **When
+  adding any `saveState`, enumerate the class's fields and diff them against what is written —
+  and make the test overwrite the state between save and load**, or it passes against the bug.
+- **`GbaApu.readPsg` maps byte offsets to the wrong half of the halfword.** `SOUND1CNT_X`
+  returns NR14 where NR13 belongs, the envelope byte is dropped from three registers, and
+  `SOUND4CNT_L` matches no branch so NR44 reads back 0 — a game polling a length-enable bit
+  gets garbage. Fixing it needs the per-register GBA read masks from GBATEK (unused GBA I/O
+  bits read 0, not the DMG's 1s), which is a research task rather than a bounds check.
+- ~~GBA wave RAM unimplemented~~ and ~~8-bit sound writes dropped~~ — both **fixed**. The wave-RAM
+  diagnosis in the first report was wrong in its mechanism, which is worth remembering: the
+  unbounded `psgTarget` fall-through is real but *latent*, since both callers are already gated on
+  `0x60-0x7F`. The visible bug was one level up — `GbaApu.write`/`read` had no case for
+  `0x04000090-0x9F` at all, so the access was dropped rather than misrouted.
 - **An undefined instruction still branches to vector 0x04**, which holds no code. Equally broken
   before the BIOS work; no test ROM reaches it.
 - **GBA cheats** need TEA decryption plus a CPU breakpoint hook. The `DEADFACE` reseed depends on

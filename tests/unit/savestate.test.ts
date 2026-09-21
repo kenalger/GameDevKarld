@@ -356,3 +356,184 @@ describe('readStateHeader', () => {
     expect(readStateHeader(view)).toEqual({ magic: STATE_MAGIC, version: 7 });
   });
 });
+
+/**
+ * APU state — the third sighting of the same bug shape.
+ *
+ * The CGB registers above lived in dedicated `Mmu` fields rather than the serialized `io`
+ * array; the GBA APU's channels lived on the channel objects. The Game Boy APU section
+ * was the same: it wrote the mixer registers, the sequencer step and wave RAM, and
+ * NOTHING per channel. Duty, frequency, phase, every length counter, every envelope,
+ * channel 1's sweep (including `sweepNegateUsed`) and channel 4's LFSR were all dropped,
+ * so a restored state came back silent, stuck, or playing the wrong note.
+ *
+ * Every test here overwrites the audio state between the save and the load. Without that
+ * step they all pass against the bug, because the fields never written to the buffer
+ * still held the right values in memory.
+ */
+describe('save state — audio', () => {
+  /** Distinctive per-channel state: a sweep, a decaying envelope, a waveform, 7-bit noise. */
+  function primeAudio(core: GameBoyCore): void {
+    core.mmu.write(0xff26, 0x80); // APU on
+    core.mmu.write(0xff24, 0x85); // NR50: VIN left, volumes 0 and 5
+    core.mmu.write(0xff25, 0x5a); // NR51: an asymmetric panning
+
+    // Channel 1: sweep period 3 / negate / shift 2, duty 2, envelope 13 decaying.
+    core.mmu.write(0xff10, 0x3a);
+    core.mmu.write(0xff11, 0xa0);
+    core.mmu.write(0xff12, 0xd3);
+    core.mmu.write(0xff13, 0x34);
+    core.mmu.write(0xff14, 0x85);
+
+    // Channel 2: a different duty, a rising envelope, length enabled.
+    core.mmu.write(0xff16, 0x50);
+    core.mmu.write(0xff17, 0x3a);
+    core.mmu.write(0xff18, 0x99);
+    core.mmu.write(0xff19, 0xc2);
+
+    // Channel 3: a written waveform. Wave RAM first — a write while the channel plays is
+    // dropped by the hardware.
+    for (let i = 0; i < 16; i++) core.mmu.write(0xff30 + i, (i * 0x11) ^ 0x3c);
+    core.mmu.write(0xff1a, 0x80);
+    core.mmu.write(0xff1b, 0x40);
+    core.mmu.write(0xff1c, 0x40);
+    core.mmu.write(0xff1d, 0x12);
+    core.mmu.write(0xff1e, 0x86);
+
+    // Channel 4: 7-bit LFSR, so the register contents alone cannot reproduce it.
+    core.mmu.write(0xff20, 0x10);
+    core.mmu.write(0xff21, 0xb6);
+    core.mmu.write(0xff22, 0x3b);
+    core.mmu.write(0xff23, 0x80);
+  }
+
+  /** What the game does next: a completely different piece of music. */
+  function overwriteAudio(core: GameBoyCore): void {
+    core.mmu.write(0xff26, 0x00); // power cycle: every register zeroed
+    core.mmu.write(0xff26, 0x80);
+    core.mmu.write(0xff24, 0x77);
+    core.mmu.write(0xff25, 0xff);
+    core.mmu.write(0xff10, 0x07);
+    core.mmu.write(0xff11, 0x1f);
+    core.mmu.write(0xff12, 0x71);
+    core.mmu.write(0xff13, 0xc1);
+    core.mmu.write(0xff14, 0x87);
+    core.mmu.write(0xff16, 0xc0);
+    core.mmu.write(0xff17, 0xf1);
+    core.mmu.write(0xff19, 0x81);
+    core.mmu.write(0xff1a, 0x00); // channel 3 off, so wave RAM is writable again
+    for (let i = 0; i < 16; i++) core.mmu.write(0xff30 + i, 0xff);
+    core.mmu.write(0xff21, 0xf1);
+    core.mmu.write(0xff22, 0x00);
+    core.mmu.write(0xff23, 0x80);
+  }
+
+  /**
+   * Runs the APU and fingerprints what comes out.
+   *
+   * The four channel outputs rather than the mixed stream, because the mixer's
+   * accumulator is host-rate wiring and deliberately not part of the state. This still
+   * sees duty phase, sweep frequency, envelope volume, wave position and the LFSR.
+   */
+  function audioFingerprint(core: GameBoyCore, ticks = 60000): string {
+    const values: string[] = [];
+    for (let i = 0; i < ticks; i++) {
+      // Bit 12 of the divider gives the 512 Hz frame sequencer its falling edge.
+      core.apu.tickT((i & 0x1000) !== 0);
+      if ((i & 0x3f) === 0) {
+        values.push(
+          core.apu.ch1.output().toFixed(3),
+          core.apu.ch2.output().toFixed(3),
+          core.apu.ch3.output().toFixed(3),
+          core.apu.ch4.output().toFixed(3),
+        );
+      }
+    }
+    return values.join(',');
+  }
+
+  it('CARRIES EVERY CHANNEL: duty phase, sweep, envelopes, wave RAM and the LFSR', () => {
+    const core = synthetic();
+    primeAudio(core);
+    audioFingerprint(core); // let the envelopes decay and the sweep shift
+
+    const state = core.serialize();
+    const expected = audioFingerprint(core);
+
+    core.deserialize(state);
+    expect(audioFingerprint(core)).toBe(expected);
+
+    // And the part that matters: the same restore after the state has been replaced.
+    core.deserialize(state);
+    overwriteAudio(core);
+    const scrambled = audioFingerprint(core);
+    expect(scrambled).not.toBe(expected); // the overwrite really did change the sound
+
+    core.deserialize(state);
+    expect(audioFingerprint(core)).toBe(expected);
+  });
+
+  it('carries the length counters, which no register exposes in full', () => {
+    const core = synthetic();
+    primeAudio(core);
+    audioFingerprint(core, 20000);
+    const lengths = [
+      core.apu.ch1.length.value,
+      core.apu.ch2.length.value,
+      core.apu.ch3.length.value,
+      core.apu.ch4.length.value,
+    ];
+    expect(lengths.some((value) => value !== 0)).toBe(true);
+
+    const state = core.serialize();
+    overwriteAudio(core);
+    expect([
+      core.apu.ch1.length.value,
+      core.apu.ch2.length.value,
+      core.apu.ch3.length.value,
+      core.apu.ch4.length.value,
+    ]).not.toEqual(lengths);
+
+    core.deserialize(state);
+    expect([
+      core.apu.ch1.length.value,
+      core.apu.ch2.length.value,
+      core.apu.ch3.length.value,
+      core.apu.ch4.length.value,
+    ]).toEqual(lengths);
+  });
+
+  it('carries a HALF-DECAYED ENVELOPE, not just the register it was loaded from', () => {
+    const core = synthetic();
+    primeAudio(core);
+    // The envelope steps at 64 Hz divided by its period of 3, so this needs real time:
+    // about 196k T-cycles per volume step.
+    for (let i = 0; i < 500000; i++) core.apu.tickT((i & 0x1000) !== 0);
+    const volume = core.apu.ch1.envelope.volume;
+    // Mid-decay: below the 13 it was loaded with, above silence.
+    expect(volume).toBeGreaterThan(0);
+    expect(volume).toBeLessThan(13);
+
+    const state = core.serialize();
+    overwriteAudio(core);
+    expect(core.apu.ch1.envelope.volume).not.toBe(volume);
+
+    core.deserialize(state);
+    expect(core.apu.ch1.envelope.volume).toBe(volume);
+  });
+
+  it('carries wave RAM and the mixer registers', () => {
+    const core = synthetic();
+    primeAudio(core);
+    const waveform = Array.from(core.apu.ch3.ram);
+
+    const state = core.serialize();
+    overwriteAudio(core);
+    expect(Array.from(core.apu.ch3.ram)).not.toEqual(waveform);
+
+    core.deserialize(state);
+    expect(Array.from(core.apu.ch3.ram)).toEqual(waveform);
+    expect(core.mmu.read(0xff24)).toBe(0x85); // NR50, VIN bit included
+    expect(core.mmu.read(0xff25)).toBe(0x5a); // NR51
+  });
+});

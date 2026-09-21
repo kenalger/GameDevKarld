@@ -76,6 +76,16 @@ export function loadPpu(ppu: Ppu, r: StateReader): void {
   });
 }
 
+/**
+ * APU state.
+ *
+ * The mixer and frame sequencer, THEN each channel in turn. The per-channel half is the
+ * part that was missing: duty, frequency, phase, the length counters, every envelope,
+ * channel 1's sweep (including `sweepNegateUsed`) and channel 4's LFSR all live on the
+ * channel objects, not in any register array, so a state without them restored an APU
+ * that was silent, stuck, or playing the wrong note. Wave RAM rides along inside
+ * `ch3.saveState`.
+ */
 export function saveApu(apu: Apu, w: StateWriter): void {
   const s = apu.serializableState();
   w.bool(s.powered);
@@ -83,8 +93,13 @@ export function saveApu(apu: Apu, w: StateWriter): void {
   w.bool(s.lastDivBit);
   w.u8(s.leftVolume);
   w.u8(s.rightVolume);
+  w.bool(s.vinLeft);
+  w.bool(s.vinRight);
   w.u8(s.panning);
-  w.bytesOf(s.waveRam);
+  apu.ch1.saveState(w);
+  apu.ch2.saveState(w);
+  apu.ch3.saveState(w);
+  apu.ch4.saveState(w);
 }
 
 export function loadApu(apu: Apu, r: StateReader): void {
@@ -94,10 +109,14 @@ export function loadApu(apu: Apu, r: StateReader): void {
     lastDivBit: r.bool(),
     leftVolume: r.u8(),
     rightVolume: r.u8(),
+    vinLeft: r.bool(),
+    vinRight: r.bool(),
     panning: r.u8(),
-    // Copied out of the reader's view, which is a window onto the caller's buffer.
-    waveRam: new Uint8Array(r.bytesOf()),
   });
+  apu.ch1.loadState(r);
+  apu.ch2.loadState(r);
+  apu.ch3.loadState(r);
+  apu.ch4.loadState(r);
 }
 
 export function saveMemory(

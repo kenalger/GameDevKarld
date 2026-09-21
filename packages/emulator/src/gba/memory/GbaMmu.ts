@@ -447,6 +447,14 @@ export class GbaMmu implements ArmBus {
   private writeIo(address: number, byte: number): void {
     const offset = address & 0x3ff;
 
+    // 0x04000060-0x040000A7 is the sound block. Sound registers do not live in `io` — the
+    // APU owns them — so without this a byte store (STRB to one envelope byte, or a byte
+    // fed to a FIFO) landed in the io array and never reached the APU.
+    if (this.apu && address >= 0x04000060 && address <= 0x040000a7) {
+      this.apu.write8(address, byte);
+      return;
+    }
+
     switch (address) {
       // KEYINPUT is read-only; only KEYCNT accepts writes.
       case 0x04000130:

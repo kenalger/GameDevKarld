@@ -26,8 +26,13 @@ export interface PpuHost {
 const LAYER_OBJ = 4;
 const LAYER_BACKDROP = 5;
 
-/** Background control register fields. */
-interface BgConfig {
+/**
+ * Background control register fields.
+ *
+ * MUTABLE AND REUSED. Four of these are allocated once in the constructor and rewritten in
+ * place by `decodeBg`; the renderer never builds one. See `bgConfigAllocations`.
+ */
+export interface BgConfig {
   priority: number;
   charBase: number;
   mosaic: boolean;
@@ -36,7 +41,6 @@ interface BgConfig {
   screenBase: number;
   /** 0-3: 256x256, 512x256, 256x512, 512x512. */
   size: number;
-  wrap: boolean;
 }
 
 /**
@@ -58,6 +62,46 @@ export class GbaPpu {
   vcount = 0;
 
   private dot = 0;
+
+  /**
+   * BgConfig objects built by the render path.
+   *
+   * Exposed so a test can assert EXACTLY zero allocation per frame. A timing assertion
+   * cannot do that job — an interleaved A/B benchmark of identical workloads was measured
+   * deviating up to 10% per pair, so any threshold tight enough to catch 16 object
+   * allocations per scanline would be flaky. This is exact and machine-independent.
+   */
+  bgConfigAllocations = 0;
+
+  /**
+   * The only four BgConfig objects that ever exist, rewritten in place every scanline.
+   *
+   * `renderTiledMode` used to call a `decodeBg` that returned a fresh object literal, from
+   * inside a 4-priority x 4-background loop: 16 allocations per scanline, ~2560 per frame,
+   * in the hottest code in the emulator. Charter law 7.
+   *
+   * Public as scratch state a test or debugger may READ. Nothing outside this class should
+   * write one: the renderer overwrites all six fields before every use.
+   */
+  readonly bgConfigs: readonly BgConfig[] = [
+    this.newBgConfig(),
+    this.newBgConfig(),
+    this.newBgConfig(),
+    this.newBgConfig(),
+  ];
+
+  /** The ONLY place a BgConfig is constructed. Nothing else may build one. */
+  private newBgConfig(): BgConfig {
+    this.bgConfigAllocations++;
+    return {
+      priority: 0,
+      charBase: 0,
+      mosaic: false,
+      fullColour: false,
+      screenBase: 0,
+      size: 0,
+    };
+  }
 
   /** Per-background scroll, control and the composited scanline. */
   private readonly bgControl = new Uint16Array(4);
@@ -436,24 +480,36 @@ export class GbaPpu {
     for (let priority = 3; priority >= 0; priority--) {
       for (let bg = backgroundCount - 1; bg >= 0; bg--) {
         if ((this.dispcnt & (0x0100 << bg)) === 0) continue;
-        const config = this.decodeBg(bg);
-        if (config.priority !== priority) continue;
-        this.renderTextBackground(line, bg, config);
+        // Priority is BGxCNT bits 0-1 (GBATEK, LCD I/O BG Control), so it can be tested
+        // straight off the register. Decoding the whole control word just to read two
+        // bits ran 16 times per scanline to render at most 4 backgrounds.
+        if ((this.bgControl[bg]! & 3) !== priority) continue;
+        this.renderTextBackground(line, bg, this.decodeBg(bg));
       }
     }
   }
 
+  /**
+   * Unpacks BGxCNT into this background's reusable config.
+   *
+   * Field meanings per GBATEK, LCD I/O BG Control: bits 0-1 priority, 2-3 character base
+   * block in 16 KByte units, 6 mosaic, 7 colours (0 = 16/16, 1 = 256/1), 8-12 screen base
+   * block in 2 KByte units, 14-15 screen size.
+   *
+   * Returns the SHARED instance for `index`, never a new object. The result is valid only
+   * until the next call for the same background — which is fine, because the only caller
+   * consumes it immediately.
+   */
   private decodeBg(index: number): BgConfig {
     const control = this.bgControl[index]!;
-    return {
-      priority: control & 3,
-      charBase: ((control >>> 2) & 3) * 0x4000,
-      mosaic: (control & 0x0040) !== 0,
-      fullColour: (control & 0x0080) !== 0,
-      screenBase: ((control >>> 8) & 0x1f) * 0x800,
-      size: (control >>> 14) & 3,
-      wrap: true,
-    };
+    const config = this.bgConfigs[index]!;
+    config.priority = control & 3;
+    config.charBase = ((control >>> 2) & 3) * 0x4000;
+    config.mosaic = (control & 0x0040) !== 0;
+    config.fullColour = (control & 0x0080) !== 0;
+    config.screenBase = ((control >>> 8) & 0x1f) * 0x800;
+    config.size = (control >>> 14) & 3;
+    return config;
   }
 
   /**
@@ -673,7 +729,9 @@ export class GbaPpu {
 
       const shape = (attr0 >>> 14) & 3;
       const size = (attr1 >>> 14) & 3;
-      const [width, height] = spriteSize(shape, size);
+      const dimensions = (shape << 2) | size;
+      const width = SPRITE_WIDTH[dimensions]!;
+      const height = SPRITE_HEIGHT[dimensions]!;
 
       // Double size draws the rotated sprite inside a box twice as large, so corners that
       // swing outside the sprite rectangle stay visible instead of being clipped.
@@ -1003,36 +1061,64 @@ export class GbaPpu {
   }
 }
 
-/** Sprite dimensions, indexed by shape then size. */
-function spriteSize(shape: number, size: number): [number, number] {
-  const table: [number, number][][] = [
-    [
-      [8, 8],
-      [16, 16],
-      [32, 32],
-      [64, 64],
-    ], // square
-    [
-      [16, 8],
-      [32, 8],
-      [32, 16],
-      [64, 32],
-    ], // wide
-    [
-      [8, 16],
-      [8, 32],
-      [16, 32],
-      [32, 64],
-    ], // tall
-    [
-      [8, 8],
-      [8, 8],
-      [8, 8],
-      [8, 8],
-    ], // prohibited
-  ];
-  return table[shape]![size]!;
-}
+/**
+ * Sprite pixel dimensions, indexed by `(shape << 2) | size`.
+ *
+ * Per GBATEK, OBJ Attributes: attr0 bits 14-15 are the shape (0=Square, 1=Horizontal,
+ * 2=Vertical, 3=Prohibited) and attr1 bits 14-15 the size, giving
+ *
+ *   size:        0      1      2      3
+ *   square      8x8  16x16  32x32  64x64
+ *   horizontal 16x8   32x8  32x16  64x32
+ *   vertical    8x16   8x32  16x32  32x64
+ *
+ * Shape 3 is prohibited and GBATEK does not say what the hardware does; 8x8 is what this
+ * renderer has always used and is kept so no pixel moves.
+ *
+ * FLAT TYPED ARRAYS, BUILT ONCE AT MODULE LOAD. This used to be a function that rebuilt a
+ * nested array-of-arrays literal — 16 pairs plus 5 enclosing arrays — and returned a
+ * two-element tuple to be destructured. It is called for all 128 OAM entries on every
+ * scanline, before the off-screen test, and twice per line when the OBJ window is on:
+ * on the order of 370,000 array allocations per frame in the hottest loop in the PPU.
+ * Charter law 7.
+ */
+const SPRITE_WIDTH = new Uint8Array([
+  8,
+  16,
+  32,
+  64, // square
+  16,
+  32,
+  32,
+  64, // horizontal
+  8,
+  8,
+  16,
+  32, // vertical
+  8,
+  8,
+  8,
+  8, // prohibited
+]);
+
+const SPRITE_HEIGHT = new Uint8Array([
+  8,
+  16,
+  32,
+  64, // square
+  8,
+  8,
+  16,
+  32, // horizontal
+  16,
+  32,
+  32,
+  64, // vertical
+  8,
+  8,
+  8,
+  8, // prohibited
+]);
 
 /**
  * Alpha blend: I = min(31, I1 * EVA/16 + I2 * EVB/16), per channel.

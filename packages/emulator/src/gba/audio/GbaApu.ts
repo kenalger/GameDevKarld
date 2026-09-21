@@ -26,7 +26,8 @@ const PSG_RATIO = [0.25, 0.5, 1, 0] as const;
 export class GbaApu {
   readonly ch1 = new PulseChannel(true);
   readonly ch2 = new PulseChannel(false);
-  readonly ch3 = new WaveChannel();
+  /** Two banks of wave RAM here, not the Game Boy's one. */
+  readonly ch3 = new WaveChannel(true);
   readonly ch4 = new NoiseChannel();
 
   readonly fifoA = new SoundFifo();
@@ -225,6 +226,11 @@ export class GbaApu {
     if (address >= 0x04000060 && address <= 0x0400007f) {
       return this.readPsg(address);
     }
+    // Wave RAM, 0x04000090-0x0400009F, as a halfword: low byte first.
+    if (address >= 0x04000090 && address <= 0x0400009f) {
+      const offset = address - 0x04000090;
+      return this.ch3.readGbaRam(offset) | (this.ch3.readGbaRam(offset + 1) << 8);
+    }
     switch (address) {
       case 0x04000080:
         return this.soundcntL;
@@ -252,14 +258,23 @@ export class GbaApu {
       if (this.powered) this.writePsg(address, half);
       return;
     }
+    // Wave RAM. Like the DMG's it is storage rather than a register, so it stays writable
+    // with the APU powered down (Pan Docs, Audio Registers: wave RAM "can always be
+    // read/written"). Writes address the bank that is NOT playing (GBATEK).
+    if (address >= 0x04000090 && address <= 0x0400009f) {
+      const offset = address - 0x04000090;
+      this.ch3.writeGbaRam(offset, half & 0xff);
+      this.ch3.writeGbaRam(offset + 1, (half >>> 8) & 0xff);
+      return;
+    }
 
     switch (address) {
       case 0x04000080:
         if (this.powered) this.soundcntL = half;
         return;
       case 0x04000082:
-        this.soundcntH = half;
         // Bits 11 and 15 clear a FIFO rather than being stored.
+        this.soundcntH = half & ~0x8800;
         if ((half & 0x0800) !== 0) this.fifoA.reset();
         if ((half & 0x8000) !== 0) this.fifoB.reset();
         return;
@@ -295,6 +310,105 @@ export class GbaApu {
     }
   }
 
+  /**
+   * An 8-bit write to a sound register.
+   *
+   * These are ordinary code: `STRB` to a single envelope or length byte is how a lot of
+   * GBA sound drivers poke one field without disturbing its neighbour. The PSG block is
+   * literally the Game Boy's registers — "in some cases two of the old 8bit registers are
+   * packed into a 16bit register and may be accessed as such" (GBATEK, GBA Sound
+   * Controller) — so a byte write addresses ONE of the two packed DMG registers. It must
+   * not be widened into a halfword write, or writing NR13 would re-run NR14's trigger.
+   *
+   * The registers that are natively 16 bits (SOUNDCNT_L/H, SOUNDBIAS) are instead
+   * read-modify-written, which is what the CPU's byte lane does on hardware.
+   */
+  write8(address: number, byte: number): void {
+    const value = byte & 0xff;
+
+    if (address >= 0x04000060 && address <= 0x0400007f) {
+      if (this.powered) this.writePsgByte(address, value);
+      return;
+    }
+    if (address >= 0x04000090 && address <= 0x0400009f) {
+      this.ch3.writeGbaRam(address - 0x04000090, value);
+      return;
+    }
+    // A FIFO sample IS a byte, so a byte write queues exactly one.
+    if (address >= 0x040000a0 && address <= 0x040000a3) {
+      this.fifoA.push(value);
+      return;
+    }
+    if (address >= 0x040000a4 && address <= 0x040000a7) {
+      this.fifoB.push(value);
+      return;
+    }
+
+    switch (address) {
+      case 0x04000080:
+        this.write(0x04000080, (this.soundcntL & 0xff00) | value);
+        return;
+      case 0x04000081:
+        this.write(0x04000080, (this.soundcntL & 0x00ff) | (value << 8));
+        return;
+      case 0x04000082:
+        this.write(0x04000082, (this.soundcntH & 0xff00) | value);
+        return;
+      case 0x04000083:
+        this.write(0x04000082, (this.soundcntH & 0x00ff) | (value << 8));
+        return;
+      case 0x04000084:
+        this.write(0x04000084, value);
+        return;
+      case 0x04000088:
+        this.write(0x04000088, (this.soundbias & 0xff00) | value);
+        return;
+      case 0x04000089:
+        this.write(0x04000088, (this.soundbias & 0x00ff) | (value << 8));
+        return;
+      default:
+        // 0x85 and the other high halves hold nothing writable.
+        return;
+    }
+  }
+
+  /** One byte of the PSG block, routed to the single DMG register that lives there. */
+  private writePsgByte(address: number, value: number): void {
+    const target = this.psgTarget(address);
+    if (target < 0) return;
+    const channel = target >> 8;
+    const register = target & 0xff;
+    const clocksLength = (this.sequencerStep & 1) === 0;
+
+    if (channel === 1) {
+      if (register === 0) this.ch1.writeNr10(value);
+      else if (register === 2) this.ch1.writeNrX1(value);
+      else if (register === 3) this.ch1.writeNrX2(value);
+      else if (register === 4) this.ch1.writeNrX3(value);
+      else if (register === 5) this.ch1.writeNrX4(value, clocksLength);
+      return;
+    }
+    if (channel === 2) {
+      if (register === 0) this.ch2.writeNrX1(value);
+      else if (register === 1) this.ch2.writeNrX2(value);
+      else if (register === 4) this.ch2.writeNrX3(value);
+      else if (register === 5) this.ch2.writeNrX4(value, clocksLength);
+      return;
+    }
+    if (channel === 3) {
+      if (register === 0) this.ch3.writeGbaNr30(value);
+      else if (register === 2) this.ch3.writeNr31(value);
+      else if (register === 3) this.ch3.writeNr32(value);
+      else if (register === 4) this.ch3.writeNr33(value);
+      else if (register === 5) this.ch3.writeNr34(value, clocksLength);
+      return;
+    }
+    if (register === 0) this.ch4.writeNr41(value);
+    else if (register === 1) this.ch4.writeNr42(value);
+    else if (register === 4) this.ch4.writeNr43(value);
+    else if (register === 5) this.ch4.writeNr44(value, clocksLength);
+  }
+
   /** A 32-bit FIFO write, which is how DMA delivers samples. */
   writeFifoWord(fifo: 0 | 1, value: number): void {
     (fifo === 0 ? this.fifoA : this.fifoB).pushWord(value);
@@ -305,24 +419,34 @@ export class GbaApu {
    *
    * 0x04000060 is NR10, and the layout matches the DMG from there — except the GBA leaves
    * a gap where the DMG had unused bytes, so channel 2 starts at 0x68 rather than 0x66.
+   *
+   * Returns `(channel << 8) | register`, or -1 for an address outside 0x60-0x7F. Packed
+   * into an integer rather than an object because this runs on every sound register
+   * write and the charter forbids allocating there.
    */
-  private psgTarget(address: number): { channel: 1 | 2 | 3 | 4; register: number } | null {
+  private psgTarget(address: number): number {
     if (address >= 0x04000060 && address <= 0x04000067) {
-      return { channel: 1, register: address - 0x04000060 };
+      return 0x100 | (address - 0x04000060);
     }
     if (address >= 0x04000068 && address <= 0x0400006f) {
-      return { channel: 2, register: address - 0x04000068 };
+      return 0x200 | (address - 0x04000068);
     }
     if (address >= 0x04000070 && address <= 0x04000077) {
-      return { channel: 3, register: address - 0x04000070 };
+      return 0x300 | (address - 0x04000070);
     }
-    return { channel: 4, register: address - 0x04000078 };
+    // Channel 4 ends at 0x7F. Without this bound every higher address — wave RAM at
+    // 0x90-0x9F and the FIFOs at 0xA0-0xA7 — resolved to a channel 4 register.
+    if (address >= 0x04000078 && address <= 0x0400007f) {
+      return 0x400 | (address - 0x04000078);
+    }
+    return -1;
   }
 
   private readPsg(address: number): number {
     const target = this.psgTarget(address);
-    if (!target) return 0;
-    const { channel, register } = target;
+    if (target < 0) return 0;
+    const channel = target >> 8;
+    const register = target & 0xff;
     if (channel === 1) {
       if (register === 0) return this.ch1.readNr10();
       if (register === 2) return this.ch1.readNrX1();
@@ -335,7 +459,8 @@ export class GbaApu {
       if (register === 4) return this.ch2.readNrX4();
     }
     if (channel === 3) {
-      if (register === 0) return this.ch3.readNr30();
+      // SOUND3CNT_L, which carries the wave RAM dimension and bank bits the DMG lacks.
+      if (register === 0) return this.ch3.readGbaNr30();
       if (register === 2) return this.ch3.readNr32();
       if (register === 4) return this.ch3.readNr34();
     }
@@ -347,8 +472,9 @@ export class GbaApu {
 
   private writePsg(address: number, value: number): void {
     const target = this.psgTarget(address);
-    if (!target) return;
-    const { channel, register } = target;
+    if (target < 0) return;
+    const channel = target >> 8;
+    const register = target & 0xff;
     // The GBA writes these 16 bits at a time; each half carries two DMG registers.
     const low = value & 0xff;
     const high = (value >>> 8) & 0xff;
@@ -375,7 +501,7 @@ export class GbaApu {
       return;
     }
     if (channel === 3) {
-      if (register === 0) this.ch3.writeNr30(low);
+      if (register === 0) this.ch3.writeGbaNr30(low);
       else if (register === 2) {
         this.ch3.writeNr31(low);
         this.ch3.writeNr32(high);

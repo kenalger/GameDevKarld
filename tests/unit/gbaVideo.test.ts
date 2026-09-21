@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { GameBoyAdvanceCore } from '../../packages/emulator/src/gba/GameBoyAdvanceCore.js';
 import { GBA_HEIGHT, GBA_WIDTH } from '../../packages/emulator/src/gba/video/GbaPpu.js';
+import { shadesReference, stripesReference } from '../harness/gbaRunner.js';
+import { diffFrameBuffers } from '../harness/conditions/screenshot.js';
 
 const ROMS = new URL('../roms/gba-tests/', import.meta.url).pathname;
 const available = existsSync(`${ROMS}shades.gba`);
@@ -116,6 +118,29 @@ describe.skipIf(!available)('GBA demo ROMs', () => {
     expect(bands.length).toBeGreaterThan(10);
     // Stripes reach the right-hand edge — a scroll or map-wrap bug truncates them.
     expect(bands[bands.length - 1]!.x).toBeGreaterThan(200);
+  });
+
+  /**
+   * The same ROM, but every pixel rather than one row.
+   *
+   * `stripesReference()` is built from stripes.asm and GBATEK, not captured from this
+   * emulator, so it can catch a char-base, screen-base, 4bpp-nibble, stripe-phase or
+   * colour-expansion error that the band check above sails straight past. This is the
+   * check `npm run gba-cpu` runs for stripes.gba.
+   */
+  it('MODE 0: stripes.gba is pixel-exact against its source-derived reference', () => {
+    const core = boot('stripes');
+    const diff = diffFrameBuffers(core.getFrameBuffer(), stripesReference(), GBA_WIDTH, GBA_HEIGHT);
+    expect(diff.bounds).toBeNull();
+    expect(diff.differing).toBe(0);
+  });
+
+  /** As above, for the 15-step blue ramp. Same reasoning, same kind of reference. */
+  it('MODE 0: shades.gba is pixel-exact against its source-derived reference', () => {
+    const core = boot('shades');
+    const diff = diffFrameBuffers(core.getFrameBuffer(), shadesReference(), GBA_WIDTH, GBA_HEIGHT);
+    expect(diff.bounds).toBeNull();
+    expect(diff.differing).toBe(0);
   });
 
   it('MODE 4 (bitmap): hello.gba draws legible text', () => {
@@ -730,5 +755,56 @@ describe('sprite mosaic', () => {
     // Without mosaic the transparent run is exactly the 4 blanked columns.
     expect(pixel(core, 43, 44)).toBe('0,0,0');
     expect(pixel(core, 44, 44)).toBe('255,0,0');
+  });
+});
+
+/**
+ * The hot-path allocation guard, and the reason it is a counter rather than a stopwatch.
+ *
+ * An interleaved A/B benchmark of two IDENTICAL workloads was measured deviating up to 10%
+ * per pair on an idle machine, so any timing threshold tight enough to catch 16 object
+ * allocations per scanline would be flaky. This is exact and machine-independent.
+ */
+describe('per-scanline allocation', () => {
+  it('ALLOCATES EXACTLY FOUR BgConfigs EVER — one per background, at construction', () => {
+    const core = new GameBoyAdvanceCore();
+    expect(core.ppu.bgConfigAllocations).toBe(4);
+  });
+
+  it('allocates NOTHING while rendering, across every mode', () => {
+    const core = newCore();
+    // Mode 0 with all four text backgrounds enabled is the worst case: the old code
+    // decoded 4 backgrounds at 4 priority levels on every one of the 160 visible lines.
+    core.ppu.writeRegister(0x04000000, 0x0f40); // mode 0, BG0-BG3 and OBJ on, 1D mapping
+    core.ppu.bgConfigAllocations = 0;
+
+    for (let frame = 0; frame < 10; frame++) renderFrame(core);
+    expect(core.ppu.bgConfigAllocations).toBe(0);
+
+    // And again in the modes that reach the text renderer by a different path.
+    for (const dispcnt of [0x0f41, 0x0f42, 0x0f43, 0x0f44, 0x0f45]) {
+      core.ppu.writeRegister(0x04000000, dispcnt);
+      for (let frame = 0; frame < 2; frame++) renderFrame(core);
+    }
+    expect(core.ppu.bgConfigAllocations).toBe(0);
+  });
+
+  /**
+   * Tamper-evidence for the counter.
+   *
+   * A counter alone could go stale if someone reintroduced an object literal in
+   * `decodeBg` without touching it. This asserts the *shared* config was written in
+   * place: stripes.gba sets BG0CNT to 0x104, so after rendering, the preallocated config
+   * for BG0 must carry char base 0x4000 and screen base 0x800. If `decodeBg` started
+   * returning a fresh object, the shared one would still hold its construction-time
+   * zeroes and this would fail.
+   */
+  it.skipIf(!available)('writes the decoded fields INTO the shared config, not a copy', () => {
+    const core = boot('stripes');
+    const config = core.ppu.bgConfigs[0]!;
+    expect(config.charBase).toBe(0x4000);
+    expect(config.screenBase).toBe(0x800);
+    expect(config.priority).toBe(0);
+    expect(config.fullColour).toBe(false);
   });
 });

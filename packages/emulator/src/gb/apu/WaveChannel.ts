@@ -16,6 +16,13 @@ const ACCESS_WINDOW_T = 2;
  *
  * Its DAC is a dedicated bit (NR30 bit 7) rather than the envelope, and wave RAM is not
  * freely accessible while the channel is playing.
+ *
+ * The GBA reuses this hardware with one difference: its wave RAM is TWO banks of 16 bytes
+ * rather than one. SOUND3CNT_L bit 5 is the dimension (0 = one bank / 32 digits, 1 = two
+ * banks / 64 digits) and bit 6 is the bank number; "the currently selected Bank Number
+ * (Bit 6) will be played back, while reading/writing to/from wave RAM will address the
+ * other (not selected) bank" (GBATEK, GBA Sound Channel 3 - Wave Output). That mode is
+ * opt-in via the constructor so the DMG path is untouched.
  */
 export class WaveChannel {
   enabled = false;
@@ -27,8 +34,19 @@ export class WaveChannel {
   private sample = 0;
   private accessWindow = 0;
 
+  /* -- GBA only: the second wave RAM bank and its select bits -- */
+  private twoBanks = false;
+  private waveBank = 0;
+  /** 31 for a single 32-digit bank, 63 when playback spans both banks. */
+  private positionMask = 31;
+
   readonly length = new LengthCounter(256);
   readonly ram = new Uint8Array(16);
+  /** GBA bank 1. Unused on the Game Boy, which has a single 16-byte block. */
+  readonly ram2 = new Uint8Array(16);
+
+  /** `gbaBanks` enables the GBA's two-bank wave RAM. */
+  constructor(private readonly gbaBanks = false) {}
 
   /** Wave RAM is part of the state: the game writes the waveform once and never again. */
   saveState(w: StateWriter): void {
@@ -40,8 +58,11 @@ export class WaveChannel {
     w.u8(this.volumeCode);
     w.u8(this.sample);
     w.u8(this.accessWindow);
+    w.bool(this.twoBanks);
+    w.u8(this.waveBank);
     this.length.saveState(w);
     w.bytesOf(this.ram);
+    w.bytesOf(this.ram2);
   }
 
   loadState(r: StateReader): void {
@@ -53,9 +74,14 @@ export class WaveChannel {
     this.volumeCode = r.u8();
     this.sample = r.u8();
     this.accessWindow = r.u8();
+    this.twoBanks = r.bool();
+    this.waveBank = r.u8() & 1;
+    this.positionMask = this.gbaBanks && this.twoBanks ? 63 : 31;
     this.length.loadState(r);
     const ram = r.bytesOf();
     if (ram.length === this.ram.length) this.ram.set(ram);
+    const ram2 = r.bytesOf();
+    if (ram2.length === this.ram2.length) this.ram2.set(ram2);
   }
 
   reset(): void {
@@ -66,8 +92,12 @@ export class WaveChannel {
     this.position = 0;
     this.volumeCode = 0;
     this.sample = 0;
+    this.twoBanks = false;
+    this.waveBank = 0;
+    this.positionMask = 31;
     this.length.reset();
-    // Wave RAM survives an APU power cycle on a DMG, so it is NOT cleared here.
+    // Wave RAM survives an APU power cycle on a DMG, so it is NOT cleared here — and the
+    // GBA's two banks are the same storage, so they survive too.
   }
 
   get dacEnabled(): boolean {
@@ -86,8 +116,10 @@ export class WaveChannel {
 
     // Wave runs at twice the rate of the pulse channels.
     this.timer = (2048 - this.frequency) * 2;
-    this.position = (this.position + 1) & 31;
-    const byte = this.ram[this.position >> 1]!;
+    this.position = (this.position + 1) & this.positionMask;
+    const byte = this.playbackByte(this.position);
+    // Upper nibble first: "as CH3 plays, it reads wave RAM left to right, upper nibble
+    // first" (Pan Docs, Audio Registers - FF30-FF3F).
     this.sample = (this.position & 1) === 0 ? byte >> 4 : byte & 0x0f;
 
     // The CPU can only reach wave RAM in the instant the channel is touching it.
@@ -116,6 +148,51 @@ export class WaveChannel {
     }
     // Same window: a write outside it is dropped entirely.
     if (this.accessWindow > 0) this.ram[this.position >> 1] = value & 0xff;
+  }
+
+  /**
+   * The wave RAM byte holding sample `position`.
+   *
+   * One bank on the Game Boy. On the GBA in two-bank mode playback "will start by
+   * replaying the currently selected bank" and then runs on into the other, giving 64
+   * digits (GBATEK, GBA Sound Channel 3 - Wave Output).
+   */
+  private playbackByte(position: number): number {
+    if (!this.gbaBanks) return this.ram[position >> 1]!;
+    const bank = this.twoBanks && position >= 32 ? this.waveBank ^ 1 : this.waveBank;
+    const source = bank === 0 ? this.ram : this.ram2;
+    return source[(position & 31) >> 1]!;
+  }
+
+  /** GBA only: the bank the CPU reaches — always the one that is NOT playing. */
+  private get cpuBank(): Uint8Array {
+    return this.waveBank === 0 ? this.ram2 : this.ram;
+  }
+
+  /**
+   * GBA SOUND3CNT_L. Bit 5 is the wave RAM dimension, bit 6 the bank number, bit 7 the
+   * DAC — the DMG's NR30 with two extra bits (GBATEK).
+   */
+  writeGbaNr30(value: number): void {
+    this.twoBanks = (value & 0x20) !== 0;
+    this.waveBank = (value >>> 6) & 1;
+    this.positionMask = this.twoBanks ? 63 : 31;
+    this.position &= this.positionMask;
+    this.writeNr30(value);
+  }
+
+  /** Unused GBA I/O bits read back as 0, unlike the DMG's 1s. */
+  readGbaNr30(): number {
+    return (this.twoBanks ? 0x20 : 0) | (this.waveBank << 6) | (this.dacOn ? 0x80 : 0);
+  }
+
+  /** GBA wave RAM, 0x04000090-0x0400009F: the bank that is not currently playing. */
+  readGbaRam(offset: number): number {
+    return this.cpuBank[offset & 0x0f]!;
+  }
+
+  writeGbaRam(offset: number, value: number): void {
+    this.cpuBank[offset & 0x0f] = value & 0xff;
   }
 
   readNr30(): number {

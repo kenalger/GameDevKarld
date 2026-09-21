@@ -329,6 +329,13 @@ export class Apu {
 
   /* -------------------------------- save state -------------------------------- */
 
+  /**
+   * The APU's own state — the mixer and the frame sequencer.
+   *
+   * Everything per channel (duty, frequency, phase, length, envelope, sweep, the LFSR and
+   * wave RAM) lives on the channel objects and is serialized by their own `saveState`,
+   * which `sections.ts` calls. It is NOT duplicated here.
+   */
   serializableState() {
     return {
       powered: this.powered,
@@ -336,8 +343,10 @@ export class Apu {
       lastDivBit: this.lastDivBit,
       leftVolume: this.leftVolume,
       rightVolume: this.rightVolume,
+      // NR50's VIN bits. No cartridge drives VIN, but they read back, so they are state.
+      vinLeft: this.vinLeft,
+      vinRight: this.vinRight,
       panning: this.panning,
-      waveRam: this.ch3.ram,
     };
   }
 
@@ -347,8 +356,9 @@ export class Apu {
     this.lastDivBit = s.lastDivBit;
     this.leftVolume = s.leftVolume;
     this.rightVolume = s.rightVolume;
+    this.vinLeft = s.vinLeft;
+    this.vinRight = s.vinRight;
     this.panning = s.panning;
-    this.ch3.ram.set(s.waveRam.subarray(0, this.ch3.ram.length));
   }
 
   /** NR52 bit 7. Powering off zeroes every register and silences everything. */
