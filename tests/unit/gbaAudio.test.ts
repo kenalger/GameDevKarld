@@ -586,3 +586,331 @@ describe('8-bit sound register writes', () => {
     expect(core.apu.fifoA.length).toBe(1);
   });
 });
+
+/**
+ * PSG register READS.
+ *
+ * `GbaMmu.readIo` fetches the sound block as a halfword and slices the requested byte out
+ * of it, so `GbaApu.readPsg` must return the whole 16-bit register with each of the two
+ * packed DMG registers in its correct half. It did not: SOUND1CNT_X returned NR14 in the
+ * LOW byte, SOUND1CNT_H/SOUND2CNT_L/SOUND3CNT_H returned only their low register and
+ * dropped the envelope/volume half, SOUND4CNT_L matched no branch and read back 0, and the
+ * NR14/NR44 branches sat at odd offsets the bus never calls with, making NR44 unreachable.
+ * Nothing caught it because no test read a GBA sound register back at all.
+ *
+ * Every expectation below cites GBATEK, "GBA Sound Channel 1-4". The read mask per
+ * register is the union of the fields GBATEK annotates R/W; W-only and "Not used" fields
+ * read 0 (GBATEK does not state this for sound registers — see the note on `readPsg`).
+ */
+describe('GBA PSG register reads', () => {
+  const SOUND1CNT_L = 0x04000060;
+  const SOUND1CNT_H = 0x04000062;
+  const SOUND1CNT_X = 0x04000064;
+  const SOUND2CNT_L = 0x04000068;
+  const SOUND2CNT_H = 0x0400006c;
+  const SOUND3CNT_L = 0x04000070;
+  const SOUND3CNT_H = 0x04000072;
+  const SOUND3CNT_X = 0x04000074;
+  const SOUND4CNT_L = 0x04000078;
+  const SOUND4CNT_H = 0x0400007c;
+
+  function poweredApu(): GbaApu {
+    const apu = new GbaApu();
+    apu.reset();
+    apu.write(SOUNDCNT_X, 0x80);
+    return apu;
+  }
+
+  function poweredCore(): GameBoyAdvanceCore {
+    const core = new GameBoyAdvanceCore();
+    const rom = new Uint8Array(0x200);
+    rom[0x03] = 0xea;
+    rom[0xb2] = 0x96;
+    core.loadRom(rom);
+    core.mmu.write16(SOUNDCNT_X, 0x80);
+    return core;
+  }
+
+  // GBATEK SOUND1CNT_L: bits 0-2 sweep shift, 3 direction, 4-6 sweep time, all R/W;
+  // bits 7-15 "Not used". Read mask 0x007F.
+  it('SOUND1CNT_L returns the sweep fields and nothing above bit 6', () => {
+    const apu = poweredApu();
+    apu.write(SOUND1CNT_L, 0xffff);
+    expect(apu.read(SOUND1CNT_L)).toBe(0x007f);
+  });
+
+  // GBATEK SOUND1CNT_H: bits 0-5 sound length "W", 6-7 duty R/W (these are NR11, the LOW
+  // byte); bits 8-15 envelope step/direction/volume R/W (NR12, the HIGH byte).
+  // Read mask 0xFFC0.
+  it('SOUND1CNT_H returns duty in the low byte and the envelope in the high byte', () => {
+    const apu = poweredApu();
+    apu.write(SOUND1CNT_H, 0xf7ff); // NR11 = 0xFF (duty 3, length 63), NR12 = 0xF7
+    expect(apu.read(SOUND1CNT_H)).toBe(0xf7c0); // length is write-only, so it reads 0
+  });
+
+  // GBATEK SOUND1CNT_X: bits 0-10 frequency "W", 11-13 "Not used", 14 length flag R/W,
+  // 15 initial "W". Read mask 0x4000 — the whole low byte (NR13) is write-only.
+  it('SOUND1CNT_X returns the length flag in BIT 14, not in the low byte', () => {
+    const apu = poweredApu();
+    apu.write(SOUND1CNT_H, 0xf000); // power the DAC so the trigger sticks
+    apu.write(SOUND1CNT_X, 0xc7ff); // NR13 = 0xFF, NR14 = 0xC7: trigger + length enable
+    expect(apu.read(SOUND1CNT_X)).toBe(0x4000);
+  });
+
+  it('SOUND1CNT_X reads 0 with the length flag clear, proving bit 14 is the only live bit', () => {
+    const apu = poweredApu();
+    apu.write(SOUND1CNT_H, 0xf000);
+    apu.write(SOUND1CNT_X, 0x87ff); // trigger, no length enable
+    expect(apu.read(SOUND1CNT_X)).toBe(0x0000);
+  });
+
+  // GBATEK SOUND2CNT_L: channel 2 "works exactly as channel 1, except that it doesn't
+  // have a Tone Envelope/Sweep Register". Read mask 0xFFC0.
+  it('SOUND2CNT_L returns duty and envelope in the same halves as channel 1', () => {
+    const apu = poweredApu();
+    apu.write(SOUND2CNT_L, 0xa1ff); // NR21 = 0xFF, NR22 = 0xA1
+    expect(apu.read(SOUND2CNT_L)).toBe(0xa1c0);
+  });
+
+  // GBATEK SOUND2CNT_H: same layout as SOUND1CNT_X. Read mask 0x4000.
+  it('SOUND2CNT_H returns the length flag in bit 14', () => {
+    const apu = poweredApu();
+    apu.write(SOUND2CNT_L, 0xf000);
+    apu.write(SOUND2CNT_H, 0xc7ff);
+    expect(apu.read(SOUND2CNT_H)).toBe(0x4000);
+  });
+
+  // GBATEK SOUND3CNT_L: bits 0-4 "Not used", 5 wave RAM dimension, 6 bank number,
+  // 7 channel off/playback, all R/W; bits 8-15 "Not used". Read mask 0x00E0.
+  it('SOUND3CNT_L returns dimension, bank and DAC, and nothing else', () => {
+    const apu = poweredApu();
+    apu.write(SOUND3CNT_L, 0xffff);
+    expect(apu.read(SOUND3CNT_L)).toBe(0x00e0);
+  });
+
+  // GBATEK SOUND3CNT_H: bits 0-7 sound length "W" (NR31), 8-12 "Not used", 13-14 "Sound
+  // Volume" R/W, 15 "Force Volume" R/W. Read mask 0xE000 — including bit 15.
+  it('SOUND3CNT_H returns volume in BITS 13-14 and force in 15, with the length byte reading 0', () => {
+    const apu = poweredApu();
+    apu.write(SOUND3CNT_H, 0xffff); // NR31 = 0xFF (length), high = 0xFF (volume 3 + force)
+    expect(apu.read(SOUND3CNT_H)).toBe(0xe000);
+  });
+
+  // GBATEK SOUND3CNT_X: same layout as SOUND1CNT_X. Read mask 0x4000.
+  it('SOUND3CNT_X returns the length flag in bit 14', () => {
+    const apu = poweredApu();
+    apu.write(SOUND3CNT_L, 0x0080); // DAC on
+    apu.write(SOUND3CNT_X, 0xc7ff);
+    expect(apu.read(SOUND3CNT_X)).toBe(0x4000);
+  });
+
+  // GBATEK SOUND4CNT_L: bits 0-5 sound length "W" (NR41), 6-7 "Not used", 8-15 envelope
+  // R/W (NR42). Read mask 0xFF00. THIS REGISTER MATCHED NO BRANCH AND READ BACK 0.
+  it('SOUND4CNT_L returns the noise envelope in the HIGH byte, where it used to read 0', () => {
+    const apu = poweredApu();
+    apu.write(SOUND4CNT_L, 0xf83f); // NR41 = 0x3F (length), NR42 = 0xF8
+    expect(apu.read(SOUND4CNT_L)).toBe(0xf800);
+  });
+
+  it('SOUND4CNT_L is nonzero at all once an envelope is written', () => {
+    const apu = poweredApu();
+    expect(apu.read(SOUND4CNT_L)).toBe(0x0000);
+    apu.write(SOUND4CNT_L, 0x1000); // NR42 = 0x10: volume 1
+    expect(apu.read(SOUND4CNT_L)).toBe(0x1000);
+  });
+
+  // GBATEK SOUND4CNT_H: bits 0-2 dividing ratio, 3 counter step/width, 4-7 shift clock,
+  // all R/W (NR43, the low byte); 8-13 "Not used"; 14 length flag R/W; 15 initial "W".
+  // Read mask 0x40FF. NR44 previously sat on an odd offset and was unreachable.
+  it('SOUND4CNT_H returns NR43 in the low byte and the NR44 length flag in bit 14', () => {
+    const apu = poweredApu();
+    apu.write(SOUND4CNT_L, 0xf000); // DAC on so the trigger sticks
+    apu.write(SOUND4CNT_H, 0xc059); // NR43 = 0x59, NR44 = 0xC0: trigger + length enable
+    expect(apu.read(SOUND4CNT_H)).toBe(0x4059);
+  });
+
+  it('UNUSED BITS READ 0, unlike the DMG whose unimplemented bits read 1', () => {
+    const apu = poweredApu();
+    // Set every writable bit of every channel, then check nothing outside the GBATEK
+    // R/W fields comes back set. A DMG-shaped read would return 0xBF-style padding.
+    for (const address of [
+      SOUND1CNT_L,
+      SOUND1CNT_H,
+      SOUND1CNT_X,
+      SOUND2CNT_L,
+      SOUND2CNT_H,
+      SOUND3CNT_L,
+      SOUND3CNT_H,
+      SOUND3CNT_X,
+      SOUND4CNT_L,
+      SOUND4CNT_H,
+    ]) {
+      apu.write(address, 0xffff);
+    }
+    const masks: Array<[number, number]> = [
+      [SOUND1CNT_L, 0x007f],
+      [SOUND1CNT_H, 0xffc0],
+      [SOUND1CNT_X, 0x4000],
+      [SOUND2CNT_L, 0xffc0],
+      [SOUND2CNT_H, 0x4000],
+      [SOUND3CNT_L, 0x00e0],
+      [SOUND3CNT_H, 0xe000],
+      [SOUND3CNT_X, 0x4000],
+      [SOUND4CNT_L, 0xff00],
+      [SOUND4CNT_H, 0x40ff],
+    ];
+    for (const [address, mask] of masks) {
+      const value = apu.read(address);
+      expect({ address: address.toString(16), outside: value & ~mask }).toEqual({
+        address: address.toString(16),
+        outside: 0,
+      });
+    }
+  });
+
+  it('reads 0 at the gaps in the sound block, which hold no register', () => {
+    const apu = poweredApu();
+    for (const address of [0x04000066, 0x0400006a, 0x0400006e, 0x04000076, 0x0400007a]) {
+      expect(apu.read(address)).toBe(0);
+    }
+  });
+
+  /**
+   * The defect lived on the bus path, not in `GbaApu` alone: `readIo` takes the halfword
+   * and returns its low or high byte depending on address bit 0. A register whose halves
+   * are swapped reads correctly through `GbaApu.read` as a 16-bit value only by accident,
+   * and wrongly through every 8-bit access a game makes.
+   */
+  it('THROUGH THE BUS: each byte of SOUND1CNT_H lands in its own half', () => {
+    const core = poweredCore();
+    core.mmu.write16(SOUND1CNT_H, 0xf7ff);
+    expect(core.mmu.read8(SOUND1CNT_H)).toBe(0xc0); // NR11: duty only
+    expect(core.mmu.read8(SOUND1CNT_H + 1)).toBe(0xf7); // NR12: the envelope
+    expect(core.mmu.read16(SOUND1CNT_H)).toBe(0xf7c0);
+  });
+
+  it('THROUGH THE BUS: SOUND4CNT_H gives NR43 at 0x7C and the length flag at 0x7D', () => {
+    const core = poweredCore();
+    core.mmu.write16(SOUND4CNT_L, 0xf000);
+    core.mmu.write16(SOUND4CNT_H, 0xc059);
+    expect(core.mmu.read8(SOUND4CNT_H)).toBe(0x59);
+    expect(core.mmu.read8(SOUND4CNT_H + 1)).toBe(0x40);
+  });
+
+  it('THROUGH THE BUS: SOUND1CNT_X puts the length flag at 0x65, not 0x64', () => {
+    const core = poweredCore();
+    core.mmu.write16(SOUND1CNT_H, 0xf000);
+    core.mmu.write16(SOUND1CNT_X, 0xc7ff);
+    expect(core.mmu.read8(SOUND1CNT_X)).toBe(0x00); // NR13 is write-only
+    expect(core.mmu.read8(SOUND1CNT_X + 1)).toBe(0x40); // NR14 bit 6
+  });
+
+  it('THROUGH THE BUS: SOUND4CNT_L delivers the envelope at 0x79', () => {
+    const core = poweredCore();
+    core.mmu.write16(SOUND4CNT_L, 0xf83f);
+    expect(core.mmu.read8(SOUND4CNT_L)).toBe(0x00); // NR41 length is write-only
+    expect(core.mmu.read8(SOUND4CNT_L + 1)).toBe(0xf8);
+  });
+});
+
+/**
+ * SOUND3CNT_H bit 15, the GBA-only force-75% volume override.
+ *
+ * GBATEK, GBA Sound Channel 3 - Wave Output:
+ *
+ *     13-14 R/W  Sound Volume  (0=Mute/Zero, 1=100%, 2=50%, 3=25%)
+ *     15    R/W  Force Volume  (0=Use above, 1=Force 75% regardless of above)
+ *
+ * `WaveChannel` modelled neither half of this: the write path dropped the bit and the
+ * mixer ignored it, so channel 3 played at the wrong level for any game that set it. The
+ * register read was fixed first, which would have left the worse of the two bugs in place
+ * and harder to find — the register would read back correctly while the audio stayed
+ * wrong. The output test below is the one that matters; the readback test alone would
+ * pass against a mixer that still ignored the bit.
+ *
+ * 75% is not a power of two, so it cannot be one of the `VOLUME_SHIFT` entries. It is
+ * applied to the 4-bit sample before the DAC map — `(sample * 3) >> 2`, so 15 becomes 11.
+ */
+describe('GBA channel 3 force-75% volume', () => {
+  const SOUND3CNT_L = 0x04000070;
+  const SOUND3CNT_H = 0x04000072;
+  const SOUND3CNT_X = 0x04000074;
+  const WAVE_RAM = 0x04000090;
+
+  /** Level for a full-scale sample (15) at each setting, through the shared DAC map. */
+  const FULL_SCALE = 15 / 7.5 - 1; // volume code 1, 100%
+  const QUARTER = (15 >> 2) / 7.5 - 1; // volume code 3, 25%
+  const FORCED_75 = ((15 * 3) >> 2) / 7.5 - 1; // force bit, 11/15 of full scale
+
+  /** A powered APU playing a wave RAM full of 0xFF, so every sample is 15. */
+  function playingMaxWave(volumeHigh: number): GbaApu {
+    const apu = new GbaApu();
+    apu.reset();
+    apu.write(SOUNDCNT_X, 0x80);
+    // Bank 0 is the playback bank, so select bank 1 to make the CPU side reach bank 0.
+    apu.write(SOUND3CNT_L, 0x40);
+    for (let i = 0; i < 16; i += 2) apu.write(WAVE_RAM + i, 0xffff);
+    apu.write(SOUND3CNT_L, 0x80); // bank 0 plays, DAC on
+    apu.write(SOUND3CNT_H, volumeHigh << 8);
+    apu.write(SOUND3CNT_X, 0x8000); // trigger
+    return apu;
+  }
+
+  function peakOutput(apu: GbaApu, ticks = 20000): number {
+    let peak = -Infinity;
+    for (let i = 0; i < ticks; i++) {
+      apu.tick();
+      const level = apu.ch3.output();
+      if (level > peak) peak = level;
+    }
+    return peak;
+  }
+
+  it('THE MIXER HONOURS THE BIT: output drops to 75% with the volume code at 100%', () => {
+    expect(peakOutput(playingMaxWave(0x20))).toBeCloseTo(FULL_SCALE, 6);
+    expect(peakOutput(playingMaxWave(0xa0))).toBeCloseTo(FORCED_75, 6);
+    // Guard: the two settings must not coincide, or this asserts nothing.
+    expect(FORCED_75).not.toBeCloseTo(FULL_SCALE, 6);
+  });
+
+  it('OVERRIDES the volume code rather than combining with it — 75% is LOUDER than 25%', () => {
+    // A mixer that ignored bit 15 would return the 25% level for both. A mixer that
+    // multiplied the two would return something quieter than 25%, not louder.
+    expect(peakOutput(playingMaxWave(0x60))).toBeCloseTo(QUARTER, 6);
+    expect(peakOutput(playingMaxWave(0xe0))).toBeCloseTo(FORCED_75, 6);
+    expect(FORCED_75).toBeGreaterThan(QUARTER);
+  });
+
+  it('reads back in bit 15 of SOUND3CNT_H', () => {
+    const apu = playingMaxWave(0xa0);
+    expect(apu.read(SOUND3CNT_H)).toBe(0xa000);
+    apu.write(SOUND3CNT_H, 0x2000); // clear it again
+    expect(apu.read(SOUND3CNT_H)).toBe(0x2000);
+  });
+
+  it('CARRIES THROUGH A SAVE STATE, and is not silently re-derived on load', () => {
+    const apu = playingMaxWave(0xa0);
+    const w = new StateWriter();
+    apu.saveState(w);
+    const state = w.finish();
+
+    // Overwrite the bit before restoring — without this the test passes against a
+    // saveState that never wrote it at all.
+    apu.write(SOUND3CNT_H, 0x2000);
+    expect(apu.read(SOUND3CNT_H)).toBe(0x2000);
+    expect(peakOutput(apu)).toBeCloseTo(FULL_SCALE, 6);
+
+    apu.loadState(new StateReader(state));
+    expect(apu.read(SOUND3CNT_H)).toBe(0xa000);
+    expect(peakOutput(apu)).toBeCloseTo(FORCED_75, 6);
+  });
+
+  it('is GBA-only: the Game Boy path cannot set it, since DMG NR32 bit 7 is unused', () => {
+    // The DMG APU calls `writeNr32`, which must leave the force bit alone. Writing 0xFF
+    // through it sets volume code 3 and nothing else.
+    const apu = playingMaxWave(0x20);
+    apu.ch3.writeNr32(0xff);
+    expect(apu.read(SOUND3CNT_H)).toBe(0x6000); // volume 3, force clear
+    expect(peakOutput(apu)).toBeCloseTo(QUARTER, 6);
+  });
+});

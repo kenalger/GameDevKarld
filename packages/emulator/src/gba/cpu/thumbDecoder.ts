@@ -185,7 +185,9 @@ export function executeThumb(cpu: Arm7, opcode: number): void {
       } else if ((opcode & 0x0600) === 0x0400) {
         pushPop(cpu, opcode);
       } else {
-        cpu.undefinedInstruction();
+        // The rest of the B000-BFFF block is unallocated on ARMv4T. BKPT (BExx) is an
+        // ARMv5 addition and is undefined here too.
+        cpu.undefinedInstruction(opcode);
       }
       return;
 
@@ -197,9 +199,15 @@ export function executeThumb(cpu: Arm7, opcode: number): void {
         // Format 17: SWI — the comment field is the low 8 bits.
         cpu.softwareInterrupt(opcode & 0xff);
       } else {
-        // Format 16: conditional branch, 8-bit signed offset
+        // Format 16: conditional branch, 8-bit signed offset.
+        //
+        // ARM7TDMI Data Sheet (DDI 0029E) 5.16: *"Note Cond = 1110 is undefined, and
+        // should not be used."* GBATEK agrees — *"E: Undefined, should not be used"* —
+        // so DExx traps rather than branching unconditionally. An assembler emits format
+        // 18 (E0xx) for an unconditional branch, never this.
         const cond = (opcode >>> 8) & 0xf;
-        if (cpu.conditionPasses(cond)) {
+        if (cond === 0xe) cpu.undefinedInstruction(opcode);
+        else if (cpu.conditionPasses(cond)) {
           cpu.branchTo(r[15]! + (alu.signExtend(opcode & 0xff, 8) << 1));
         }
       }
@@ -218,7 +226,8 @@ export function executeThumb(cpu: Arm7, opcode: number): void {
         r[14] = ((r[15]! - 2) | 1) >>> 0;
         cpu.branchTo(target);
       } else {
-        cpu.undefinedInstruction();
+        // E800-EFFF is the ARMv5 BLX suffix; on an ARMv4T part it is undefined.
+        cpu.undefinedInstruction(opcode);
       }
       return;
   }

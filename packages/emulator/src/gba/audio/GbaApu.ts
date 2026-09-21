@@ -398,7 +398,7 @@ export class GbaApu {
     if (channel === 3) {
       if (register === 0) this.ch3.writeGbaNr30(value);
       else if (register === 2) this.ch3.writeNr31(value);
-      else if (register === 3) this.ch3.writeNr32(value);
+      else if (register === 3) this.ch3.writeGbaNr32(value);
       else if (register === 4) this.ch3.writeNr33(value);
       else if (register === 5) this.ch3.writeNr34(value, clocksLength);
       return;
@@ -442,32 +442,105 @@ export class GbaApu {
     return -1;
   }
 
+  /**
+   * Reads one 16-bit PSG register, 0x04000060-0x0400007F.
+   *
+   * Two things make this more than a demux of the DMG read helpers:
+   *
+   *  1. **Each GBA register packs two DMG registers, low byte first.** SOUND1CNT_X is
+   *     NR13 in its low half and NR14 in its high half; SOUND1CNT_H is NR11 then NR12
+   *     ("in some cases two of the old 8bit registers are packed into a 16bit register
+   *     and may be accessed as such" — GBATEK, GBA Sound Controller). `GbaMmu.readIo`
+   *     takes the halfword returned here and slices the byte the CPU asked for out of
+   *     it, so a value in the wrong half is a value in the wrong byte.
+   *  2. **Unused and write-only GBA I/O bits read back 0, where the DMG's read back 1.**
+   *     Every `readNrXX()` helper is DMG-shaped and ORs those 1s in (`readNrX4()`
+   *     returns `0xBF | ...`), so each one must be masked down to the GBA's readable
+   *     bits before it is composed — not simply shifted into place.
+   *
+   * The mask per register is exactly the union of the fields GBATEK ("GBA Sound Channel
+   * 1-4") annotates R/W; everything it annotates W or "Not used" reads 0.
+   *
+   * **Where GBATEK is silent:** it never states what an unused or write-only *sound* bit
+   * reads back as. Its only statement on the subject, "Reading from Unused or Write-Only
+   * I/O Ports" (GBA Unpredictable Things), covers wholly-unused 32-bit fragments and says
+   * a readable lower halfword "returns zero" — it says nothing about individual bits of a
+   * readable register. The masks below were therefore derived from the R/W annotations
+   * and then cross-checked against mGBA's `GBAIOWrite`, which records precisely these
+   * bits in the I/O shadow its reads come from: 0x007F, 0xFFC0, 0x4000, 0xFFC0, 0x4000,
+   * 0x00E0, 0xE000, 0x4000, 0xFF00, 0x40FF. All ten agree with the GBATEK-derived union,
+   * so the two independent sources corroborate. (mGBA was read to understand the
+   * hardware, per charter law 11; no code was taken.)
+   */
   private readPsg(address: number): number {
-    const target = this.psgTarget(address);
-    if (target < 0) return 0;
-    const channel = target >> 8;
-    const register = target & 0xff;
-    if (channel === 1) {
-      if (register === 0) return this.ch1.readNr10();
-      if (register === 2) return this.ch1.readNrX1();
-      if (register === 3) return this.ch1.readNrX2();
-      if (register === 4) return this.ch1.readNrX4();
+    // A 16-bit register read is halfword-aligned — the ARM7TDMI forces address bit 0 low
+    // on LDRH, and `GbaMmu.readIo` already passes `address & ~1` and does the byte slice
+    // itself. Aligning here rather than switching on the raw address means the odd byte
+    // addresses resolve to the same halfword instead of falling into the dead odd-offset
+    // branches this function used to have (NR14 was reachable only at 0x64, NR44 not at
+    // all, because the bus never calls with an odd address).
+    switch (address & ~1) {
+      // SOUND1CNT_L (4000060h), sweep. GBATEK: bits 0-2 shift, 3 direction, 4-6 time, all
+      // R/W; bits 7-15 not used. Mask 0x007F. Only DMG register that is not packed.
+      case 0x04000060:
+        return this.ch1.readNr10() & 0x007f;
+
+      // SOUND1CNT_H (4000062h). GBATEK: bits 0-5 length W-only, 6-7 duty R/W (low byte =
+      // NR11), bits 8-15 envelope R/W (high byte = NR12). Mask 0xFFC0.
+      case 0x04000062:
+        return ((this.ch1.readNrX2() & 0xff) << 8) | (this.ch1.readNrX1() & 0xc0);
+
+      // SOUND1CNT_X (4000064h). GBATEK: bits 0-10 frequency W-only, 11-13 not used, 14
+      // length flag R/W, 15 initial W-only. Mask 0x4000 — the low byte (NR13) reads 0
+      // entirely, and only NR14 bit 6 survives into the high byte.
+      case 0x04000064:
+        return (this.ch1.readNrX4() & 0x40) << 8;
+
+      // SOUND2CNT_L (4000068h). GBATEK: channel 2 "works exactly as channel 1, except
+      // that it doesn't have a Tone Envelope/Sweep Register". Mask 0xFFC0.
+      case 0x04000068:
+        return ((this.ch2.readNrX2() & 0xff) << 8) | (this.ch2.readNrX1() & 0xc0);
+
+      // SOUND2CNT_H (400006Ch), same shape as SOUND1CNT_X. Mask 0x4000.
+      case 0x0400006c:
+        return (this.ch2.readNrX4() & 0x40) << 8;
+
+      // SOUND3CNT_L (4000070h). GBATEK: bits 0-4 not used, 5 wave RAM dimension, 6 bank
+      // number, 7 channel off/playback, all R/W; bits 8-15 not used. Mask 0x00E0. This is
+      // the one register with no DMG counterpart, so `readGbaNr30()` already returns GBA
+      // bit positions with GBA zeroes; the mask is belt-and-braces.
+      case 0x04000070:
+        return this.ch3.readGbaNr30() & 0x00e0;
+
+      // SOUND3CNT_H (4000072h). GBATEK: bits 0-7 length W-only (NR31 reads 0), 8-12 not
+      // used, 13-14 "Sound Volume" R/W, 15 "Force Volume (0=Use above, 1=Force 75%
+      // regardless of above)" R/W. Mask 0xE000. `readGbaNr32` is used rather than the DMG
+      // `readNr32`, which has no force bit and ORs `0x9F` of DMG 1-padding in.
+      case 0x04000072:
+        return (this.ch3.readGbaNr32() & 0xe0) << 8;
+
+      // SOUND3CNT_X (4000074h), same shape as SOUND1CNT_X. Mask 0x4000.
+      case 0x04000074:
+        return (this.ch3.readNr34() & 0x40) << 8;
+
+      // SOUND4CNT_L (4000078h). GBATEK: bits 0-5 length W-only (NR41 reads 0), 6-7 not
+      // used, 8-15 envelope R/W (NR42). Mask 0xFF00. This register matched no branch at
+      // all before and read back 0.
+      case 0x04000078:
+        return (this.ch4.readNr42() & 0xff) << 8;
+
+      // SOUND4CNT_H (400007Ch). GBATEK: bits 0-2 dividing ratio, 3 counter width, 4-7
+      // shift clock, all R/W (NR43, fully readable); 8-13 not used; 14 length flag R/W;
+      // 15 initial W-only. Mask 0x40FF. NR44 was unreachable before this.
+      case 0x0400007c:
+        return (this.ch4.readNr43() & 0xff) | ((this.ch4.readNr44() & 0x40) << 8);
+
+      // 0x66, 0x6A, 0x6E, 0x76, 0x7A and 0x7E are gaps in the sound block — GBATEK's I/O
+      // map lists no register there. Open-bus behaviour for unmapped I/O belongs to the
+      // bus, not the APU, so this reports 0.
+      default:
+        return 0;
     }
-    if (channel === 2) {
-      if (register === 0) return this.ch2.readNrX1();
-      if (register === 1) return this.ch2.readNrX2();
-      if (register === 4) return this.ch2.readNrX4();
-    }
-    if (channel === 3) {
-      // SOUND3CNT_L, which carries the wave RAM dimension and bank bits the DMG lacks.
-      if (register === 0) return this.ch3.readGbaNr30();
-      if (register === 2) return this.ch3.readNr32();
-      if (register === 4) return this.ch3.readNr34();
-    }
-    if (register === 1) return this.ch4.readNr42();
-    if (register === 4) return this.ch4.readNr43();
-    if (register === 5) return this.ch4.readNr44();
-    return 0;
   }
 
   private writePsg(address: number, value: number): void {
@@ -504,7 +577,7 @@ export class GbaApu {
       if (register === 0) this.ch3.writeGbaNr30(low);
       else if (register === 2) {
         this.ch3.writeNr31(low);
-        this.ch3.writeNr32(high);
+        this.ch3.writeGbaNr32(high);
       } else if (register === 4) {
         this.ch3.writeNr33(low);
         this.ch3.writeNr34(high, (this.sequencerStep & 1) === 0);

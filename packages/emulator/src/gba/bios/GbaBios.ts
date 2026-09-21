@@ -1,6 +1,13 @@
 import type { Arm7, BiosHle } from '../cpu/Arm7.js';
-import { VECTOR_IRQ, VECTOR_SWI } from '../cpu/Arm7.js';
-import { FLAG_I, FLAG_T, MODE_IRQ, MODE_SUPERVISOR, MODE_SYSTEM } from '../cpu/registers.js';
+import { VECTOR_IRQ, VECTOR_SWI, VECTOR_UNDEFINED } from '../cpu/Arm7.js';
+import {
+  FLAG_I,
+  FLAG_T,
+  MODE_IRQ,
+  MODE_SUPERVISOR,
+  MODE_SYSTEM,
+  MODE_UNDEFINED,
+} from '../cpu/registers.js';
 import { biosArcTan, biosArcTan2, biosDiv, biosSqrt, divResult } from './arithmetic.js';
 import { bgAffineSet, objAffineSet } from './affine.js';
 import { bitUnPack, diffUnFilter, huffUnComp, lz77UnComp, rlUnComp } from './decompress.js';
@@ -97,6 +104,19 @@ export class GbaBios implements BiosHle {
    */
   unimplementedSwi = -1;
 
+  /**
+   * Where the last undefined instruction was, what it was, and which state it was in;
+   * -1 and false when none has been executed.
+   *
+   * Same contract as `unimplementedSwi`: diagnostic only, not machine state, absent from
+   * save states. This is the one thing an emulator can say that is genuinely useful when
+   * a ROM misbehaves — "executed an undefined instruction at PC=X, opcode=Y" — and
+   * without it the trap is silent.
+   */
+  undefinedPc = -1;
+  undefinedOpcode = -1;
+  undefinedThumb = false;
+
   private returnMode = RETURN_NORMAL;
 
   constructor(
@@ -107,6 +127,9 @@ export class GbaBios implements BiosHle {
   reset(): void {
     this.bus.setBiosOpenBus(OPEN_BUS_AFTER_RESET);
     this.unimplementedSwi = -1;
+    this.undefinedPc = -1;
+    this.undefinedOpcode = -1;
+    this.undefinedThumb = false;
   }
 
   /* --------------------------------- interrupts -------------------------------- */
@@ -143,7 +166,7 @@ export class GbaBios implements BiosHle {
   }
 
   /**
-   * Execution inside the BIOS region. Two addresses mean something; nothing else does.
+   * Execution inside the BIOS region. Three addresses mean something; nothing else does.
    *
    * Returns true when this consumed the step.
    */
@@ -156,7 +179,43 @@ export class GbaBios implements BiosHle {
       this.intrWaitResume();
       return true;
     }
+    if (address === VECTOR_UNDEFINED) {
+      // Parked on the undefined-instruction vector: burn a cycle and stay. See
+      // undefinedInstruction below for why this is the honest thing to do.
+      this.cpu.internal();
+      return true;
+    }
     return false;
+  }
+
+  /**
+   * The undefined instruction trap.
+   *
+   * GBATEK, "ARM CPU Exceptions": vector `BASE+04h`, *"Undefined (_und)"* mode, *"I=1,
+   * F=unchanged"*; `raiseException` does that part, including `LR=$+4` (GBATEK's ARM
+   * opcode timing table: *"The Undefined Instruction 2S+1I+1N ---- PC=4, ARM Und mode,
+   * LR=$+4"*), which in THUMB state is $+2 so that the documented `MOVS PC,R14` return
+   * lands on the following instruction either way.
+   *
+   * What happens after the vector is where a BIOS-less emulator has to make a choice.
+   * On hardware the vector holds a branch into the BIOS's handler, and GBATEK says that
+   * handler is *locked*: it only forwards the exception to the cartridge when the header
+   * has debug enabled (*"When both bits are set (ie. A5h), the FIQ/Undefined Instruction
+   * handler in the BIOS becomes unlocked"*). Locked, it does not return — the machine
+   * stops. So the PC parks on the vector and `interceptBios` holds it there.
+   *
+   * That is deliberately NOT "skip the instruction and carry on". An undefined
+   * instruction means something upstream already went wrong; continuing would overwrite
+   * the evidence. Parking leaves the register file, both stacks, SPSR_und and LR_und
+   * exactly as the fault left them, and `undefinedPc`/`undefinedOpcode` say what it was.
+   */
+  undefinedInstruction(opcode: number): void {
+    const cpu = this.cpu;
+    const thumb = cpu.regs.thumb;
+    this.undefinedPc = (cpu.regs.r[15]! - (thumb ? 4 : 8)) >>> 0;
+    this.undefinedOpcode = opcode >>> 0;
+    this.undefinedThumb = thumb;
+    cpu.raiseException(VECTOR_UNDEFINED, MODE_UNDEFINED);
   }
 
   /**

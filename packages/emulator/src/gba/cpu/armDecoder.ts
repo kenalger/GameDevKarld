@@ -42,8 +42,15 @@ export function executeArm(cpu: Arm7, opcode: number): void {
   }
 
   // Single data transfer: cond 01 I P U B W L Rn Rd offset
+  //
+  // The register-offset form (I=1) shares its space with the architecturally Undefined
+  // encoding. ARM7TDMI Data Sheet (DDI 0029E) Figure 4-1 lists it as `Cond 011 xxxx...x 1
+  // xxxx`, and 4.17: *"If the condition is true, the undefined instruction trap will be
+  // taken."* Bit 4 is what separates them — an LDR/STR offset is always shifted by an
+  // immediate, so bit 4 is zero on every real transfer.
   if ((opcode & 0x0c000000) === 0x04000000) {
-    singleTransfer(cpu, opcode);
+    if ((opcode & 0x02000010) === 0x02000010) cpu.undefinedInstruction(opcode);
+    else singleTransfer(cpu, opcode);
     return;
   }
 
@@ -87,7 +94,16 @@ export function executeArm(cpu: Arm7, opcode: number): void {
     return;
   }
 
-  cpu.undefinedInstruction();
+  // Everything left is the coprocessor space: `cond 110` (LDC/STC) and `cond 1110`
+  // (CDP/MCR/MRC). ARM7TDMI TRM (DDI 0029G) 4.6: *"If you are implementing a system that
+  // does not include any external coprocessors, you must tie both CPA and CPB HIGH... If
+  // any coprocessor instructions are received, they take the undefined instruction
+  // trap."* The GBA has none — GBATEK: *"irrelevant in GBA because no coprocessor
+  // exists"* — so every one of them lands here.
+  //
+  // Also here: the ARMv5 encodings this core does not have (BKPT, CLZ, QADD, the halfword
+  // multiplies, LDC2/MCR2/...), which are undefined on an ARMv4T part.
+  cpu.undefinedInstruction(opcode);
 }
 
 /* ------------------------------ data processing ------------------------------ */

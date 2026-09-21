@@ -28,7 +28,7 @@ export function cartridgeFingerprint(info: { saveKey: string } | null): number {
  * BUMP THIS whenever any subsystem's layout changes. A state that silently misparses is
  * far worse than one that refuses to load: the game appears to work and then corrupts.
  */
-export const STATE_VERSION = 5;
+export const STATE_VERSION = 6;
 
 /**
  * Reads just the container header, without parsing the state.

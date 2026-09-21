@@ -50,6 +50,11 @@ export interface BiosHle {
   softwareInterrupt(comment: number): void;
   /** Services an IRQ in place of branching to the BIOS vector. */
   interruptEntry(): void;
+  /**
+   * Services an undefined instruction in place of branching to the BIOS vector.
+   * `opcode` is the offending encoding — 32-bit in ARM state, 16-bit in Thumb.
+   */
+  undefinedInstruction(opcode: number): void;
   /** An instruction address inside the BIOS region; true when it consumed the step. */
   interceptBios(address: number): boolean;
   /** Whether the condition that ends a Halt is met. */
@@ -332,8 +337,22 @@ export class Arm7 {
     else this.raiseException(VECTOR_SWI, MODE_SUPERVISOR);
   }
 
-  undefinedInstruction(): void {
-    this.raiseException(VECTOR_UNDEFINED, MODE_UNDEFINED);
+  /**
+   * The undefined instruction trap.
+   *
+   * ARM7TDMI TRM (DDI 0029G) 2.8.8: *"When the ARM7TDMI processor encounters an
+   * instruction that neither it, nor any coprocessor in the system can handle, the
+   * ARM7TDMI core takes the undefined instruction trap."* GBATEK's vector table gives
+   * the rest: vector 04h, Undefined mode, *"I=1, F=unchanged"*, and the return address
+   * `LR=$+4` — which is what `raiseException` computes for a non-IRQ vector.
+   *
+   * `opcode` is carried only so the BIOS layer can record what faulted. The decoders
+   * call this off their cold fall-through path, so the extra argument costs nothing in
+   * the fetch-decode-execute loop.
+   */
+  undefinedInstruction(opcode: number): void {
+    if (this.bios !== null) this.bios.undefinedInstruction(opcode);
+    else this.raiseException(VECTOR_UNDEFINED, MODE_UNDEFINED);
   }
 
   /* --------------------------------- helpers ---------------------------------- */

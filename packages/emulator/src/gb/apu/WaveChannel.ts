@@ -39,6 +39,12 @@ export class WaveChannel {
   private waveBank = 0;
   /** 31 for a single 32-digit bank, 63 when playback spans both banks. */
   private positionMask = 31;
+  /**
+   * GBA only: SOUND3CNT_H bit 15. "Force Volume (0=Use above, 1=Force 75% regardless of
+   * above)" (GBATEK, GBA Sound Channel 3 - Wave Output). The DMG has no such bit — bit 7
+   * of its NR32 is unused — so only `writeGbaNr32` can set this.
+   */
+  private gbaForceVolume = false;
 
   readonly length = new LengthCounter(256);
   readonly ram = new Uint8Array(16);
@@ -60,6 +66,7 @@ export class WaveChannel {
     w.u8(this.accessWindow);
     w.bool(this.twoBanks);
     w.u8(this.waveBank);
+    w.bool(this.gbaForceVolume);
     this.length.saveState(w);
     w.bytesOf(this.ram);
     w.bytesOf(this.ram2);
@@ -76,6 +83,7 @@ export class WaveChannel {
     this.accessWindow = r.u8();
     this.twoBanks = r.bool();
     this.waveBank = r.u8() & 1;
+    this.gbaForceVolume = r.bool();
     this.positionMask = this.gbaBanks && this.twoBanks ? 63 : 31;
     this.length.loadState(r);
     const ram = r.bytesOf();
@@ -94,6 +102,7 @@ export class WaveChannel {
     this.sample = 0;
     this.twoBanks = false;
     this.waveBank = 0;
+    this.gbaForceVolume = false;
     this.positionMask = 31;
     this.length.reset();
     // Wave RAM survives an APU power cycle on a DMG, so it is NOT cleared here — and the
@@ -106,6 +115,16 @@ export class WaveChannel {
 
   output(): number {
     if (!this.enabled || !this.dacOn) return 0;
+    // GBA SOUND3CNT_H bit 15: "Force Volume (0=Use above, 1=Force 75% regardless of
+    // above)" (GBATEK, GBA Sound Channel 3 - Wave Output) — it OVERRIDES the 2-bit volume
+    // code rather than combining with it, which is why this returns early.
+    //
+    // 75% is not a power of two, so unlike the four volume codes it cannot be a shift. It
+    // is applied in the digital domain to the 4-bit sample, before the DAC map, so that it
+    // attenuates toward the same rail the codes do: `(sample * 3) >> 2`, i.e. 0-15 becomes
+    // 0-11. Doing it in the analog domain instead (scaling the bipolar result by 0.75)
+    // would move the DC point and make "mute" stop being the bottom rail.
+    if (this.gbaForceVolume) return ((this.sample * 3) >> 2) / 7.5 - 1;
     const shift = VOLUME_SHIFT[this.volumeCode]!;
     return (this.sample >> shift) / 7.5 - 1;
   }
@@ -214,6 +233,25 @@ export class WaveChannel {
 
   writeNr32(value: number): void {
     this.volumeCode = (value >> 5) & 0x03;
+  }
+
+  /**
+   * GBA SOUND3CNT_H high byte. Identical to the DMG's NR32 plus bit 7, the force-75%
+   * volume override (GBATEK, GBA Sound Channel 3 - Wave Output). Kept separate from
+   * `writeNr32` so the Game Boy path cannot set the bit — on a DMG that bit is unused.
+   */
+  writeGbaNr32(value: number): void {
+    this.gbaForceVolume = (value & 0x80) !== 0;
+    this.writeNr32(value);
+  }
+
+  /**
+   * GBA SOUND3CNT_H high byte as read back: volume code in bits 5-6, force-75% in bit 7,
+   * everything else 0. Unlike `readNr32` this ORs in no DMG 1-padding — unused GBA I/O
+   * bits read back 0.
+   */
+  readGbaNr32(): number {
+    return (this.volumeCode << 5) | (this.gbaForceVolume ? 0x80 : 0);
   }
 
   writeNr33(value: number): void {

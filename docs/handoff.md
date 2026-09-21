@@ -16,7 +16,7 @@ now** — including the things that are wrong.
 | Licence | **MIT** — `LICENSE` and all three `package.json` files |
 | Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
 | Source | **15,484** lines of non-test `.ts`/`.tsx` under `packages/emulator/src` + `apps/web/src`; 23,072 including tests, harness and scripts |
-| Tests | **1140 passing, 1 skipped**, 32 files |
+| Tests | **1227 passing, 1 skipped**, 33 files |
 | Build | 11 files (`apps/web/dist`); JS **416 KB**, **125 KB gzipped**, CSS 17 KB |
 | Save-state format | **version 3.** States written by earlier builds are refused, not misread |
 | Performance | ~20x realtime, p99 well under budget |
@@ -100,18 +100,26 @@ Ordered by how likely they are to bite.
   time, the round-trip tests passed because they restored into the same moment they saved. **When
   adding any `saveState`, enumerate the class's fields and diff them against what is written —
   and make the test overwrite the state between save and load**, or it passes against the bug.
-- **`GbaApu.readPsg` maps byte offsets to the wrong half of the halfword.** `SOUND1CNT_X`
-  returns NR14 where NR13 belongs, the envelope byte is dropped from three registers, and
-  `SOUND4CNT_L` matches no branch so NR44 reads back 0 — a game polling a length-enable bit
-  gets garbage. Fixing it needs the per-register GBA read masks from GBATEK (unused GBA I/O
-  bits read 0, not the DMG's 1s), which is a research task rather than a bounds check.
+- ~~`GbaApu.readPsg` maps byte offsets to the wrong half~~ — **fixed**, with the GBA read masks.
+  GBATEK never states what an unused or write-only *sound* bit reads back as; the mask was derived
+  as the union of the fields it annotates R/W, then cross-checked against mGBA's ten register
+  masks, which agree bit-for-bit. That corroboration is recorded in the `readPsg` doc comment,
+  along with the fact that GBATEK is silent — do not let a future reader mistake it for documented.
 - ~~GBA wave RAM unimplemented~~ and ~~8-bit sound writes dropped~~ — both **fixed**. The wave-RAM
   diagnosis in the first report was wrong in its mechanism, which is worth remembering: the
   unbounded `psgTarget` fall-through is real but *latent*, since both callers are already gated on
   `0x60-0x7F`. The visible bug was one level up — `GbaApu.write`/`read` had no case for
   `0x04000090-0x9F` at all, so the access was dropped rather than misrouted.
-- **An undefined instruction still branches to vector 0x04**, which holds no code. Equally broken
-  before the BIOS work; no test ROM reaches it.
+- ~~An undefined instruction branches to an empty vector~~ — **fixed, and it was worse than that
+  description.** The architecturally Undefined ARM encoding never raised the exception at all:
+  `armDecoder` matched single data transfer on `(opcode & 0x0c000000) === 0x04000000`, which
+  swallows the whole `cond 011 ... 1 ....` space, so `e7f000f0` — the encoding every toolchain
+  emits for a trap — decoded as `LDRB` and silently continued. The coprocessor space did trap, and
+  then destroyed the machine within two instructions: PC walked into BIOS, the open-bus latch
+  `e129f000` was fetched as an opcode, decoded as `MSR`, and wrote r0 into CPSR.
+- **ARMv5 `BLX` register falls into the `MSR` mask** and executes as an MSR. Pre-existing, found
+  while fixing the above and deliberately left: real ARM7TDMI decoding in the PSR-transfer space is
+  loose and undocumented, and changing it risks the ROM suite for no benefit.
 - **GBA cheats** need TEA decryption plus a CPU breakpoint hook. The `DEADFACE` reseed depends on
   two 256-byte translation tables published nowhere except inside mGBA (MPL-2.0). Now that WebBoy
   is MIT this is decided rather than open: those tables **may not be copied**, so the reseed has to
