@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { Arm7, VECTOR_SWI } from '../../packages/emulator/src/gba/cpu/Arm7.js';
-import { GbaMmu } from '../../packages/emulator/src/gba/memory/GbaMmu.js';
+import { GameBoyAdvanceCore } from '../../packages/emulator/src/gba/GameBoyAdvanceCore.js';
+import type { GbaMmu } from '../../packages/emulator/src/gba/memory/GbaMmu.js';
 
 export interface GbaTestResult {
   readonly passed: boolean;
@@ -22,44 +22,28 @@ export interface GbaTestResult {
  * first glyph, which is enough to tell them apart without a full OCR.
  */
 export function runGbaTest(romPath: string, maxSteps = 20_000_000): GbaTestResult {
-  const mmu = new GbaMmu();
-  mmu.reset();
-  mmu.loadRom(new Uint8Array(readFileSync(romPath)));
-
-  const cpu = new Arm7(mmu);
-  cpu.reset();
-
-  // A minimal BIOS: SWIs return immediately, except Div which these ROMs use to render
-  // the failing test number.
-  new DataView(mmu.bios.buffer).setUint32(VECTOR_SWI, 0xe1b0f00e, true);
-  cpu.softwareInterrupt = () => {
-    const r = cpu.regs.r;
-    const a = r[0]! | 0;
-    const b = r[1]! | 0;
-    r[0] = (b === 0 ? 0 : Math.trunc(a / b)) >>> 0;
-    r[1] = (b === 0 ? 0 : a % b) >>> 0;
-    r[3] = Math.abs(r[0]! | 0) >>> 0;
-  };
-
-  // The framework spins on DISPSTAT's VBlank flag; with no PPU attached, toggle it so the
-  // wait always terminates.
-  let vblank = 0;
-  const read16 = mmu.read16.bind(mmu);
-  mmu.read16 = (address: number): number =>
-    address >>> 0 === 0x04000004 ? (vblank ^= 1) : read16(address);
+  // THE WHOLE MACHINE, not a CPU on a bus. An earlier version of this harness ran Arm7 +
+  // GbaMmu with a stubbed SWI handler and a hand-toggled DISPSTAT VBlank bit, which meant
+  // two of the four things bios.gba tests — the value a protected BIOS read returns after
+  // a SWI, and after an interrupt — could not be exercised at all, and no interrupt could
+  // ever fire. The core wires the native BIOS, the PPU and the interrupt path together,
+  // so the ROM sees the same machine a player would.
+  const core = new GameBoyAdvanceCore();
+  core.loadRom(new Uint8Array(readFileSync(romPath)));
+  const cpu = core.cpu;
 
   let steps = 0;
   for (; steps < maxSteps; steps++) {
-    cpu.step();
+    core.stepInstruction();
     // Both outcomes end in a tight `b .`; when PC stops moving, the ROM is done.
     if (steps % 5000 === 0) {
       const pc = cpu.regs.r[15]!;
-      for (let k = 0; k < 4; k++) cpu.step();
+      for (let k = 0; k < 4; k++) core.stepInstruction();
       if (cpu.regs.r[15] === pc) break;
     }
   }
 
-  const text = renderResultLine(mmu);
+  const text = renderResultLine(core.mmu);
   return { passed: isPassText(text), text, steps };
 }
 

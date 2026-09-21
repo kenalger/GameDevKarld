@@ -1,4 +1,5 @@
 import { LengthCounter, VolumeEnvelope } from './components.js';
+import type { StateReader, StateWriter } from '../state/StateBuffer.js';
 
 /** The four duty cycles, as 8-step waveforms. */
 const DUTY = [
@@ -32,6 +33,46 @@ export class PulseChannel {
   private sweepNegateUsed = false;
 
   constructor(private readonly hasSweep: boolean) {}
+
+  /**
+   * Save-state.
+   *
+   * `hasSweep` is construction-time wiring, not state, so it is not written; everything
+   * that a running channel mutates is.
+   */
+  saveState(w: StateWriter): void {
+    w.bool(this.enabled);
+    w.u8(this.duty);
+    w.u16(this.frequency);
+    w.u16(this.timer);
+    w.u8(this.step);
+    this.length.saveState(w);
+    this.envelope.saveState(w);
+    w.u8(this.sweepPeriod);
+    w.bool(this.sweepNegate);
+    w.u8(this.sweepShift);
+    w.u8(this.sweepTimer);
+    w.bool(this.sweepEnabled);
+    w.u16(this.sweepShadow);
+    w.bool(this.sweepNegateUsed);
+  }
+
+  loadState(r: StateReader): void {
+    this.enabled = r.bool();
+    this.duty = r.u8();
+    this.frequency = r.u16();
+    this.timer = r.u16();
+    this.step = r.u8();
+    this.length.loadState(r);
+    this.envelope.loadState(r);
+    this.sweepPeriod = r.u8();
+    this.sweepNegate = r.bool();
+    this.sweepShift = r.u8();
+    this.sweepTimer = r.u8();
+    this.sweepEnabled = r.bool();
+    this.sweepShadow = r.u16();
+    this.sweepNegateUsed = r.bool();
+  }
 
   reset(): void {
     this.enabled = false;

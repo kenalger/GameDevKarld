@@ -185,15 +185,16 @@ export class GbaMmu implements ArmBus {
         return this.vram[vramOffset(addr)]!;
       case 0x7:
         return this.oam[addr & 0x3ff]!;
+      case 0xd:
+        // The serial EEPROM shares region 0x0D with the top half of the third ROM mirror.
+        if (this.isEeprom(addr)) return this.backup.eeprom.read();
+        return this.romByte(addr);
       case 0x8:
       case 0x9:
       case 0xa:
       case 0xb:
       case 0xc:
-      case 0xd: {
-        const offset = addr & 0x01ffffff;
-        return offset < this.rom.length ? this.rom[offset]! : this.openBusByte(addr);
-      }
+        return this.romByte(addr);
       default:
         return this.backup.read(addr);
     }
@@ -202,6 +203,8 @@ export class GbaMmu implements ArmBus {
   read16(address: number): number {
     const addr = (address & ~1) >>> 0;
     const region = (addr >>> 24) & 0xf;
+    // The EEPROM answers one bit per halfword, in bit 0 — this is the access DMA3 makes.
+    if (region === 0xd && this.isEeprom(addr)) return this.backup.eeprom.read();
     // SRAM is an 8-bit bus: wider reads see the byte replicated.
     if (region >= 0xe) {
       const byte = this.backup.read(addr);
@@ -216,6 +219,9 @@ export class GbaMmu implements ArmBus {
   read32(address: number): number {
     const addr = (address & ~3) >>> 0;
     const region = (addr >>> 24) & 0xf;
+    // A word read of the EEPROM is not a documented access; it consumes ONE bit rather
+    // than two, so a stray LDR cannot silently eat half the reply stream.
+    if (region === 0xd && this.isEeprom(addr)) return this.backup.eeprom.read();
     if (region >= 0xe) {
       const byte = this.backup.read(addr);
       return (byte | (byte << 8) | (byte << 16) | (byte << 24)) >>> 0;
@@ -225,8 +231,48 @@ export class GbaMmu implements ArmBus {
     return value;
   }
 
+  private romByte(address: number): number {
+    const offset = address & 0x01ffffff;
+    return offset < this.rom.length ? this.rom[offset]! : this.openBusByte(address);
+  }
+
+  /**
+   * Does this address decode to the serial EEPROM?
+   *
+   * GBATEK, "GBA Cart Backup EEPROM / Addressing and Waitstates": the chip answers at
+   * 0x0DFFFF00-0x0DFFFFFF, *"On carts with 16MB or smaller ROM, eeprom can be alternately
+   * accessed anywhere at D000000h-DFFFFFFh."* So the whole region decodes on a small cart,
+   * and only the top 256 bytes on a large one — where the rest of 0x0D is real ROM.
+   */
+  private isEeprom(address: number): boolean {
+    if (!this.backup.isEeprom) return false;
+    return this.rom.length <= 0x01000000 || (address & 0x00ffff00) === 0x00ffff00;
+  }
+
+  /**
+   * DMA3 has started a transfer INTO the EEPROM window.
+   *
+   * The length of that request stream is the only way to tell a 6-bit part from a 14-bit
+   * one; see Eeprom.inferAddressBits.
+   */
+  notifyEepromDma(units: number): void {
+    if (this.backup.isEeprom) this.backup.eeprom.inferAddressBits(units);
+  }
+
   private openBusByte(address: number): number {
     return (this.openBus >>> ((address & 3) * 8)) & 0xff;
+  }
+
+  /**
+   * Sets the value a protected BIOS read returns.
+   *
+   * WebBoy has no BIOS image to fetch opcodes from, so the native BIOS supplies the value
+   * hardware would have left behind — GBATEK, "Reading from BIOS Memory": the opcode at
+   * [00DCh+8] after startup, [0134h+8] during an IRQ, [013Ch+8] after one, [0188h+8] after
+   * a SWI. See `gba/bios/GbaBios.ts`.
+   */
+  setBiosOpenBus(value: number): void {
+    this.lastBiosOpcode = value >>> 0;
   }
 
   /** Records the opcode the CPU just fetched, for BIOS read protection and open bus. */
@@ -263,6 +309,10 @@ export class GbaMmu implements ArmBus {
         return;
       case 0x7:
         return;
+      case 0xd:
+        // One command bit into the serial EEPROM, carried in bit 0.
+        if (this.isEeprom(addr)) this.backup.eeprom.write(byte);
+        return;
       case 0xe:
       case 0xf:
         this.backup.write(addr, byte);
@@ -276,6 +326,13 @@ export class GbaMmu implements ArmBus {
     const addr = (address & ~1) >>> 0;
     const half = value & 0xffff;
     const region = (addr >>> 24) & 0xf;
+
+    // GBATEK, "Using DMA": "one halfword for each bit, bit1-15 of the halfwords are don't
+    // care, only bit0 is used". This is the write DMA3 makes for a request stream.
+    if (region === 0xd && this.isEeprom(addr)) {
+      this.backup.eeprom.write(half);
+      return;
+    }
 
     // SRAM and Flash sit on an 8-bit bus, so a halfword write moves exactly ONE byte —
     // and it is the byte of `value` lined up with the *unaligned* address, not the low
@@ -318,6 +375,11 @@ export class GbaMmu implements ArmBus {
 
   write32(address: number, value: number): void {
     const addr = (address & ~3) >>> 0;
+    // A word write to the EEPROM clocks in one bit, matching the word read above.
+    if (((addr >>> 24) & 0xf) === 0xd && this.isEeprom(addr)) {
+      this.backup.eeprom.write(value);
+      return;
+    }
     // Same 8-bit-bus rule as write16: one byte, chosen by the low two address bits.
     if (((addr >>> 24) & 0xf) >= 0xe) {
       this.backup.write(address, value >>> (8 * (address & 3)));

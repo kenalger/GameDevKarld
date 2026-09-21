@@ -68,6 +68,12 @@ export class GbaApu {
    *
    * The output sink and sample rate are host wiring, not machine state, so they are left
    * alone — restoring must not disconnect the audio device the browser already opened.
+   *
+   * The four PSG channels ARE machine state and are written here. Their registers live in
+   * dedicated fields on the channel objects, NOT in the bus's `io` array — sound register
+   * writes are routed straight to the APU — so nothing else in the container carries them.
+   * Channel 3's wave RAM is the clearest case: a game writes its waveform once at startup
+   * and never again, so a state that omits it restores silence or noise.
    */
   saveState(w: StateWriter): void {
     w.u16(this.soundcntL);
@@ -79,6 +85,10 @@ export class GbaApu {
     w.f64(this.sampleCounter);
     this.fifoA.saveState(w);
     this.fifoB.saveState(w);
+    this.ch1.saveState(w);
+    this.ch2.saveState(w);
+    this.ch3.saveState(w);
+    this.ch4.saveState(w);
   }
 
   loadState(r: StateReader): void {
@@ -91,6 +101,10 @@ export class GbaApu {
     this.sampleCounter = r.f64();
     this.fifoA.loadState(r);
     this.fifoB.loadState(r);
+    this.ch1.loadState(r);
+    this.ch2.loadState(r);
+    this.ch3.loadState(r);
+    this.ch4.loadState(r);
   }
 
   setOutputRate(hz: number, sink: (left: number, right: number) => void): void {

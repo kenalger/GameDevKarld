@@ -38,6 +38,27 @@ export interface ArmBus {
   waitstates(address: number, width: number, sequential: boolean): number;
 }
 
+/**
+ * The BIOS, for a machine that has none.
+ *
+ * WebBoy ships no GBA BIOS image — it is Nintendo's copyright — so the SWI instruction and
+ * the IRQ vector, both of which land in BIOS code on hardware, are serviced natively
+ * instead. The CPU knows only this contract; the routines live in `gba/bios`.
+ */
+export interface BiosHle {
+  /** Services `SWI <comment>` in place of branching to the BIOS vector. */
+  softwareInterrupt(comment: number): void;
+  /** Services an IRQ in place of branching to the BIOS vector. */
+  interruptEntry(): void;
+  /** An instruction address inside the BIOS region; true when it consumed the step. */
+  interceptBios(address: number): boolean;
+  /** Whether the condition that ends a Halt is met. */
+  shouldWake(): boolean;
+}
+
+/** The BIOS occupies 0x00000000-0x00003FFF. */
+const BIOS_END = 0x4000;
+
 export const VECTOR_RESET = 0x00000000;
 export const VECTOR_UNDEFINED = 0x00000004;
 export const VECTOR_SWI = 0x00000008;
@@ -78,6 +99,9 @@ export class Arm7 {
   irqPending = false;
 
   halted = false;
+
+  /** Native BIOS, attached by the core. Null means "execute whatever is at the vector". */
+  bios: BiosHle | null = null;
 
   /**
    * Save-state.
@@ -208,16 +232,31 @@ export class Arm7 {
 
     if (this.irqPending && (this.regs.cpsr & FLAG_I) === 0) {
       this.halted = false;
-      this.raiseException(VECTOR_IRQ, MODE_IRQ);
+      if (this.bios !== null) this.bios.interruptEntry();
+      else this.raiseException(VECTOR_IRQ, MODE_IRQ);
       return this.cycles - before;
     }
 
     if (this.halted) {
-      this.internal();
-      return this.cycles - before;
+      // Halt ends on (IE AND IF), which is a BIOS-level condition, not a CPU one.
+      if (this.bios === null || !this.bios.shouldWake()) {
+        this.internal();
+        return this.cycles - before;
+      }
+      this.halted = false;
     }
 
     const r = this.regs.r;
+
+    // There is no BIOS image to execute, so an instruction address inside it is the
+    // native BIOS's business: its IRQ-handler return lands there, and so does a wait.
+    if (this.bios !== null) {
+      const insnAddress = (r[15]! - (this.regs.thumb ? 4 : 8)) >>> 0;
+      if (insnAddress < BIOS_END && this.bios.interceptBios(insnAddress)) {
+        return this.cycles - before;
+      }
+    }
+
     const opcode = this.pipeline0;
     this.pipeline0 = this.pipeline1;
 
@@ -262,7 +301,7 @@ export class Arm7 {
    * Exception entry: save CPSR into the new mode's SPSR, save the return address in its
    * LR, disable IRQ, switch to ARM state, and jump to the vector.
    */
-  raiseException(vector: number, mode: number): void {
+  raiseException(vector: number, mode: number, enterVector = true): void {
     const oldCpsr = this.regs.cpsr;
     const thumb = this.regs.thumb;
     const r = this.regs.r;
@@ -284,11 +323,13 @@ export class Arm7 {
     if (vector === VECTOR_FIQ) cpsr |= FLAG_F;
     this.regs.cpsr = cpsr >>> 0;
 
-    this.branchTo(vector);
+    // The native BIOS takes it from here when there is no vector code to run.
+    if (enterVector) this.branchTo(vector);
   }
 
-  softwareInterrupt(): void {
-    this.raiseException(VECTOR_SWI, MODE_SUPERVISOR);
+  softwareInterrupt(comment: number): void {
+    if (this.bios !== null) this.bios.softwareInterrupt(comment);
+    else this.raiseException(VECTOR_SWI, MODE_SUPERVISOR);
   }
 
   undefinedInstruction(): void {

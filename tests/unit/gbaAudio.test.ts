@@ -6,6 +6,7 @@ import {
   FIFO_REFILL_THRESHOLD,
 } from '../../packages/emulator/src/gba/audio/SoundFifo.js';
 import { GameBoyAdvanceCore } from '../../packages/emulator/src/gba/GameBoyAdvanceCore.js';
+import { StateReader, StateWriter } from '../../packages/emulator/src/gb/state/StateBuffer.js';
 
 const SOUNDCNT_L = 0x04000080;
 const SOUNDCNT_H = 0x04000082;
@@ -287,5 +288,55 @@ describe('integration with the GBA core', () => {
     core.mmu.timers.tick(4);
 
     expect(core.apu.fifoA.length).toBeLessThan(4);
+  });
+});
+
+/**
+ * A save-state audit found the Game Boy state was missing every CGB register because they
+ * lived in dedicated `Mmu` fields rather than the serialized `io` array. The GBA APU had
+ * the identical shape of bug: sound-register writes are routed straight to the channel
+ * objects and never touch the bus's `io` array, and `GbaApu.saveState` wrote the two
+ * SOUNDCNT registers and the FIFOs but not `ch1`-`ch4`. These tests pin the fix.
+ */
+describe('GBA PSG channels in a save state', () => {
+  function roundTrip(apu: GbaApu): GbaApu {
+    const w = new StateWriter();
+    apu.saveState(w);
+    const restored = new GbaApu();
+    restored.reset();
+    restored.loadState(new StateReader(w.finish()));
+    return restored;
+  }
+
+  it('CARRIES THE FOUR PSG CHANNELS, which live outside the io array', () => {
+    const apu = new GbaApu();
+    apu.reset();
+    apu.write(SOUNDCNT_X, 0x80); // power on, or every channel write is dropped
+    apu.write(0x04000062, 0xf740); // ch1: NR11 duty, NR12 envelope
+    apu.write(0x04000064, 0x8700); // ch1: frequency + trigger
+    apu.write(0x0400006a, 0xa980); // ch2: NR21/NR22
+    apu.write(0x0400007c, 0x0053); // ch4: NR43
+
+    const probes = [0x04000062, 0x04000064, 0x0400006a, 0x0400007c] as const;
+    const before = probes.map((address) => apu.read(address));
+
+    const blank = new GbaApu();
+    blank.reset();
+    // Guard: if a fresh APU already read back the same values the test proves nothing.
+    expect(probes.map((address) => blank.read(address))).not.toEqual(before);
+
+    expect(probes.map((address) => roundTrip(apu).read(address))).toEqual(before);
+  });
+
+  it('carries the channel ENABLE bits, which SOUNDCNT_X reports', () => {
+    const apu = new GbaApu();
+    apu.reset();
+    apu.write(SOUNDCNT_X, 0x80);
+    apu.write(0x04000062, 0xf700);
+    apu.write(0x04000064, 0x8700); // trigger channel 1
+
+    const enabled = apu.read(SOUNDCNT_X) & 0x0f;
+    expect(enabled).not.toBe(0);
+    expect(roundTrip(apu).read(SOUNDCNT_X) & 0x0f).toBe(enabled);
   });
 });

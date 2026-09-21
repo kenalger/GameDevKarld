@@ -5,6 +5,7 @@
  * reload rules are identical across channels, and getting them subtly different per channel
  * is how Blargg's `03-trigger` and `04-sweep` start failing in confusing ways.
  */
+import type { StateReader, StateWriter } from '../state/StateBuffer.js';
 
 /** Length counter. Silences a channel after a set duration when enabled. */
 export class LengthCounter {
@@ -21,6 +22,16 @@ export class LengthCounter {
   /** Writing NRx1 loads the counter with `max - n`. */
   load(n: number): void {
     this.value = this.max - n;
+  }
+
+  saveState(w: StateWriter): void {
+    w.u16(this.value);
+    w.bool(this.enabled);
+  }
+
+  loadState(r: StateReader): void {
+    this.value = r.u16();
+    this.enabled = r.bool();
   }
 
   /** Returns true when the channel should be disabled. */
@@ -72,6 +83,24 @@ export class VolumeEnvelope {
     this.period = 0;
     this.timer = 0;
     this.finished = true;
+  }
+
+  saveState(w: StateWriter): void {
+    w.u8(this.volume);
+    w.u8(this.initialVolume);
+    w.bool(this.addMode);
+    w.u8(this.period);
+    w.u8(this.timer);
+    w.bool(this.finished);
+  }
+
+  loadState(r: StateReader): void {
+    this.volume = r.u8();
+    this.initialVolume = r.u8();
+    this.addMode = r.bool();
+    this.period = r.u8();
+    this.timer = r.u8();
+    this.finished = r.bool();
   }
 
   /** NRx2. Returns the raw register value for read-back. */

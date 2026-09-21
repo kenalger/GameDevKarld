@@ -194,8 +194,8 @@ export function executeThumb(cpu: Arm7, opcode: number): void {
         // Format 15: LDMIA/STMIA Rb!, {list}
         multipleTransfer(cpu, opcode);
       } else if ((opcode & 0x0f00) === 0x0f00) {
-        // Format 17: SWI
-        cpu.softwareInterrupt();
+        // Format 17: SWI — the comment field is the low 8 bits.
+        cpu.softwareInterrupt(opcode & 0xff);
       } else {
         // Format 16: conditional branch, 8-bit signed offset
         const cond = (opcode >>> 8) & 0xf;

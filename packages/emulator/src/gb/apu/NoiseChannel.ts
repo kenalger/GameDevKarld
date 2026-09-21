@@ -1,4 +1,5 @@
 import { LengthCounter, VolumeEnvelope } from './components.js';
+import type { StateReader, StateWriter } from '../state/StateBuffer.js';
 
 /** Divisors for the noise frequency, indexed by the low 3 bits of NR43. */
 const DIVISOR = [8, 16, 32, 48, 64, 80, 96, 112] as const;
@@ -19,6 +20,28 @@ export class NoiseChannel {
 
   readonly length = new LengthCounter(64);
   readonly envelope = new VolumeEnvelope();
+
+  saveState(w: StateWriter): void {
+    w.bool(this.enabled);
+    w.u16(this.lfsr);
+    w.u8(this.clockShift);
+    w.bool(this.widthMode);
+    w.u8(this.divisorCode);
+    w.u32(this.timer);
+    this.length.saveState(w);
+    this.envelope.saveState(w);
+  }
+
+  loadState(r: StateReader): void {
+    this.enabled = r.bool();
+    this.lfsr = r.u16();
+    this.clockShift = r.u8();
+    this.widthMode = r.bool();
+    this.divisorCode = r.u8();
+    this.timer = r.u32();
+    this.length.loadState(r);
+    this.envelope.loadState(r);
+  }
 
   reset(): void {
     this.enabled = false;

@@ -16,7 +16,7 @@ now** — including the things that are wrong.
 | Licence | **MIT** — `LICENSE` and all three `package.json` files |
 | Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
 | Source | **15,484** lines of non-test `.ts`/`.tsx` under `packages/emulator/src` + `apps/web/src`; 23,072 including tests, harness and scripts |
-| Tests | **1044 passing, 1 skipped**, 30 files |
+| Tests | **1116 passing, 1 skipped**, 32 files |
 | Build | 11 files (`apps/web/dist`); JS **416 KB**, **125 KB gzipped**, CSS 17 KB |
 | Save-state format | **version 3.** States written by earlier builds are refused, not misread |
 | Performance | ~20x realtime, p99 well under budget |
@@ -41,7 +41,7 @@ changed since. These are measurements, not recollections.
 | dmg-acid2, cgb-acid2 | **pixel-exact** |
 | cgb-acid-hell | 2 / 23040 pixels differ (x=80, y=68–69) |
 | Mealybug Tearoom | **0 / 24** — reported, not gated |
-| jsmolka gba-tests | **7 / 7** |
+| jsmolka gba-tests | **8 / 9** — `stripes` fails; `bios` now passes |
 
 ---
 
@@ -94,7 +94,17 @@ Ordered by how likely they are to bite.
   wave-unit modelling rather than more tuning.
 - **`halt_bug`** times out at 2500 frames.
 - **`cgb-acid-hell`** off by 2 pixels.
-- **EEPROM backup** detected but unimplemented — no test ROM in the corpus covers it.
+- **`stripes.gba`** fails — the last GBA ROM in the corpus that does not pass. Not yet diagnosed.
+- **The GB core's APU save state has the same per-channel gap the GBA one just had.**
+  `gb/state/sections.ts:saveApu` writes `powered`, the sequencer, both volumes, panning and wave
+  RAM — and no per-channel state at all. The channel classes now have `saveState`/`loadState`, so
+  the fix is small. Third instance of this bug class; see below.
+- **GBA wave RAM is effectively unimplemented.** `GbaApu.psgTarget` has no upper bound on its
+  channel-4 branch, so writes to `0x04000090-0x9F` are misrouted into channel 4's registers.
+- **8-bit writes to GBA sound registers are silently dropped** — `GbaMmu.writeIo` puts them in the
+  `io` array without ever calling the APU.
+- **An undefined instruction still branches to vector 0x04**, which holds no code. Equally broken
+  before the BIOS work; no test ROM reaches it.
 - **GBA cheats** need TEA decryption plus a CPU breakpoint hook. The `DEADFACE` reseed depends on
   two 256-byte translation tables published nowhere except inside mGBA (MPL-2.0). Now that WebBoy
   is MIT this is decided rather than open: those tables **may not be copied**, so the reseed has to

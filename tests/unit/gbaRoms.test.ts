@@ -11,8 +11,10 @@ const available = existsSync(`${ROMS}arm.gba`);
 /** THE PHASE 12 + 13 EXIT GATE. */
 describe.skipIf(!available)('jsmolka/gba-tests against the real bus', () => {
   // arm/thumb/memory are the CPU and bus gates; none/sram/flash* are the Phase 15 save
-  // gate — they exercise the 8-bit backup bus and the Flash command protocol.
-  it.each(['arm', 'thumb', 'memory', 'none', 'sram', 'flash64', 'flash128'])(
+  // gate — they exercise the 8-bit backup bus and the Flash command protocol; bios is the
+  // native BIOS gate — BIOS read protection after startup, after a SWI, during an IRQ and
+  // after one, which together prove the SWI and interrupt paths run at all.
+  it.each(['arm', 'thumb', 'memory', 'none', 'sram', 'flash64', 'flash128', 'bios'])(
     '%s.gba — all tests pass',
     (suite) => {
       const result = runGbaTest(`${ROMS}${suite}.gba`);

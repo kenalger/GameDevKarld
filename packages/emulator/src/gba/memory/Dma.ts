@@ -17,6 +17,15 @@ export interface DmaMemory {
   read32(address: number): number;
   write16(address: number, value: number): void;
   write32(address: number, value: number): void;
+  /**
+   * DMA3 is starting a 16-bit transfer into the EEPROM window, `units` halfwords long.
+   *
+   * GBATEK, "GBA Cart Backup EEPROM / Notes": the chip's address width *"seems to be no
+   * autodection mechanism"* — the length of this request stream is the only evidence of
+   * it, so the bus is told before any bits move. Optional: a bus without EEPROM need not
+   * implement it.
+   */
+  notifyEepromDma?(units: number): void;
 }
 
 /**
@@ -156,6 +165,14 @@ export class DmaChannel {
     let source = this.internalSource;
     let destination = this.internalDestination;
     let cycles = 0;
+
+    // GBATEK, "Using DMA": EEPROM transfers go through DMA3, in 16-bit mode, and nothing
+    // else — DMA0-2 cannot reach external memory. The length of a stream headed INTO the
+    // chip is what reveals its address width, so hand it over before the loop. (A stream
+    // coming OUT is always 68 halfwords and says nothing.)
+    if (this.index === 3 && !words && !fifo && destination >>> 24 === 0x0d) {
+      this.memory.notifyEepromDma?.(units);
+    }
 
     for (let i = 0; i < units; i++) {
       if (words || fifo) {

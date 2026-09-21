@@ -1,4 +1,5 @@
 import { LengthCounter } from './components.js';
+import type { StateReader, StateWriter } from '../state/StateBuffer.js';
 
 const VOLUME_SHIFT = [4, 0, 1, 2] as const;
 
@@ -28,6 +29,34 @@ export class WaveChannel {
 
   readonly length = new LengthCounter(256);
   readonly ram = new Uint8Array(16);
+
+  /** Wave RAM is part of the state: the game writes the waveform once and never again. */
+  saveState(w: StateWriter): void {
+    w.bool(this.enabled);
+    w.bool(this.dacOn);
+    w.u16(this.frequency);
+    w.u16(this.timer);
+    w.u8(this.position);
+    w.u8(this.volumeCode);
+    w.u8(this.sample);
+    w.u8(this.accessWindow);
+    this.length.saveState(w);
+    w.bytesOf(this.ram);
+  }
+
+  loadState(r: StateReader): void {
+    this.enabled = r.bool();
+    this.dacOn = r.bool();
+    this.frequency = r.u16();
+    this.timer = r.u16();
+    this.position = r.u8();
+    this.volumeCode = r.u8();
+    this.sample = r.u8();
+    this.accessWindow = r.u8();
+    this.length.loadState(r);
+    const ram = r.bytesOf();
+    if (ram.length === this.ram.length) this.ram.set(ram);
+  }
 
   reset(): void {
     this.enabled = false;

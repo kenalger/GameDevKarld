@@ -11,9 +11,17 @@ import { runGbaTest } from '../tests/harness/gbaRunner.js';
 
 const ROOT = new URL('../tests/roms/gba-tests/', import.meta.url).pathname;
 const filter = process.argv.slice(2).filter((a) => a !== '--');
-const SUITES = ['arm', 'thumb', 'memory', 'none', 'sram', 'flash64', 'flash128'].filter(
-  (s) => filter.length === 0 || filter.includes(s),
-);
+const SUITES = [
+  'arm',
+  'thumb',
+  'memory',
+  'none',
+  'sram',
+  'flash64',
+  'flash128',
+  'stripes',
+  'bios',
+].filter((s) => filter.length === 0 || filter.includes(s));
 
 if (!existsSync(ROOT)) {
   console.error('error: tests/roms/gba-tests/ missing. Run `npm run fetch-gba-tests`.');

@@ -33,7 +33,17 @@ export class ArmRegisters {
   /** The 16 currently-visible registers. R15 is PC. */
   readonly r = new Uint32Array(16);
 
-  cpsr = MODE_SYSTEM | FLAG_I | FLAG_F;
+  /**
+   * The state the BIOS hands the cartridge.
+   *
+   * GBATEK, "GBA Cartridge Header": *"Note: With all entry points, the CPU is initially set
+   * into system mode."* The interrupt disable bits are CLEAR, not set: WebBoy starts the
+   * game directly rather than booting a BIOS it does not have, and a game — jsmolka's
+   * `bios.gba` test 3 among them — enables an interrupt by writing IE and IME alone,
+   * never touching CPSR. That only works on hardware because the BIOS already left the I
+   * bit clear. Booting with IRQs masked means no GBA game ever takes an interrupt.
+   */
+  cpsr = MODE_SYSTEM;
 
   /* Banked copies, indexed by mode bank. */
   private readonly bankedSp = new Uint32Array(6);
@@ -76,7 +86,7 @@ export class ArmRegisters {
     this.bankedSpsr.fill(0);
     this.fiqR8to12.fill(0);
     this.userR8to12.fill(0);
-    this.cpsr = MODE_SYSTEM | FLAG_I | FLAG_F;
+    this.cpsr = MODE_SYSTEM;
 
     // Values the BIOS would leave: SP for the three modes software actually uses.
     this.r[13] = 0x03007f00;

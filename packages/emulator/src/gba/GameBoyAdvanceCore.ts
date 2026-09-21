@@ -2,6 +2,7 @@ import type { EmulatorCore } from '../core/EmulatorCore.js';
 import type { CartridgeInfo } from '../shared/types/cartridge.js';
 import type { CoreInspector, CpuSnapshot } from '../shared/types/inspection.js';
 import { Arm7 } from './cpu/Arm7.js';
+import { GbaBios } from './bios/GbaBios.js';
 import { GbaMmu } from './memory/GbaMmu.js';
 import { GbaPpu, GBA_HEIGHT, GBA_WIDTH, DOTS_PER_LINE, LINES_PER_FRAME } from './video/GbaPpu.js';
 import { parseHeader } from '../gb/cartridge/header.js';
@@ -30,6 +31,8 @@ export class GameBoyAdvanceCore implements EmulatorCore {
   readonly ppu: GbaPpu;
   readonly apu = new GbaApu();
   readonly cpu: Arm7;
+  /** The BIOS, emulated natively: WebBoy ships no BIOS image and cannot. */
+  readonly bios: GbaBios;
 
   private info: CartridgeInfo | null = null;
   private running = true;
@@ -55,6 +58,8 @@ export class GameBoyAdvanceCore implements EmulatorCore {
     this.mmu.timers.onFifoTick = (timerIndex: number) => this.apu.notifyTimerOverflow(timerIndex);
     this.apu.onFifoRefill = (fifo: 0 | 1) => this.mmu.dma.notifyFifo(fifo === 0 ? 1 : 2);
     this.cpu = new Arm7(this.mmu);
+    this.bios = new GbaBios(this.cpu, this.mmu);
+    this.cpu.bios = this.bios;
     this.mmu.onInterrupt = () => {
       this.cpu.irqPending = true;
     };
@@ -71,6 +76,7 @@ export class GameBoyAdvanceCore implements EmulatorCore {
     this.ppu.reset();
     this.apu.reset();
     this.cpu.reset();
+    this.bios.reset();
     this.frames = 0;
     this.instructions = 0;
     this.frameComplete = false;
@@ -145,7 +151,20 @@ export class GameBoyAdvanceCore implements EmulatorCore {
     this.mmu.timers.tick(cycles);
   }
 
+  /**
+   * One step of the machine: a DMA burst if one is pending, otherwise one instruction.
+   *
+   * The interrupt line is re-sampled here exactly as `runFrame` does. Leaving it out made
+   * `stepInstruction` a subtly different machine from the one `runFrame` runs: a pending
+   * IRQ latched by `onInterrupt` would never clear, so the CPU serviced it over and over.
+   */
   stepInstruction(): number {
+    if (this.mmu.dma.busy) {
+      const dmaCycles = this.mmu.dma.run();
+      this.advance(dmaCycles);
+      return dmaCycles;
+    }
+    this.cpu.irqPending = this.mmu.irqPending;
     const cycles = this.cpu.step();
     this.instructions++;
     this.advance(cycles);

@@ -29,7 +29,9 @@ export function executeArm(cpu: Arm7, opcode: number): void {
 
   // Software interrupt: cond 1111 comment
   if ((opcode & 0x0f000000) === 0x0f000000) {
-    cpu.softwareInterrupt();
+    // GBATEK, "How BIOS Processes SWIs": *"In ARM mode, only the upper 8bit of the 24bit
+    // comment field are interpreted"*.
+    cpu.softwareInterrupt((opcode >>> 16) & 0xff);
     return;
   }
 

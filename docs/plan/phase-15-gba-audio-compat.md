@@ -2,7 +2,17 @@
 
 **Owner:** `gb-audio-io-engineer` · **Supporting:** `gb-cpu-engineer` (timers), `gb-memory-engineer` (DMA) · **Gate:** `emu-accuracy-tester` + `webboy-app-qa`
 **Depends on:** 14 · **Roadmap:** §33 GBA Audio, §44–45
-**Status:** ⚠️ **Audio built and sweep in place; commercial compatibility NOT measured** — 2026-09-17.
+**Status:** ⚠️ **Audio, backup and BIOS built; commercial compatibility NOT measured** — 2026-09-21.
+
+> **The suite was reporting 7/7 while running 7 of the 9 ROMs in the corpus.** `scripts/run-gba-cpu.ts`
+> had a hardcoded list and `stripes.gba` and `bios.gba` were not in it. Both now run. `bios.gba`
+> passes; `stripes.gba` does not, and is recorded as an open failure rather than quietly skipped.
+>
+> Fixing `bios.gba` exposed that **no GBA game could take an interrupt or call a SWI**: with no BIOS
+> image, `softwareInterrupt` branched into an all-zero array, `noteFetch` was dead code, and the CPU
+> booted with the I bit *set* so a game enabling an interrupt through IE/IME alone was never served.
+> The harness hid it — it drove a bare CPU with a stubbed SWI and a hand-toggled DISPSTAT, so two of
+> the four `bios.gba` tests were unreachable by construction.
 
 **GBA audio.** Both Direct Sound FIFOs and all four PSG channels, mixed. 23 tests. `npm run compat` runs the whole corpus across all three systems in one table.
 
