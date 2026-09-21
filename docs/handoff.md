@@ -1,6 +1,6 @@
 # Handoff
 
-Current state, open decisions, and what to pick up next. Updated 2026-09-19.
+Current state, open decisions, and what to pick up next. Updated 2026-09-21.
 
 `docs/plan/` says what to build and in what order. This file says **where things actually are right
 now** — including the things that are wrong.
@@ -12,25 +12,25 @@ now** — including the things that are wrong.
 | | |
 |---|---|
 | Branch | `main`, working tree clean |
-| Pushed | **yes** — the local `origin/main` ref is at the tip, 0 commits ahead. Not re-fetched, so this is the last known remote position. History kept unsquashed, see below. |
+| Pushed | **yes** — re-fetched 2026-09-21, `origin/main` at `32d9716`, 0 ahead. History kept unsquashed, see below. |
 | Licence | **MIT** — `LICENSE` and all three `package.json` files |
 | Deployed | **no.** The build is ready and `docs/deploy.md` is written; nobody has run it. |
-| Source | **15,484** lines of non-test `.ts`/`.tsx` under `packages/emulator/src` + `apps/web/src`; 23,072 including tests, harness and scripts |
+| Source | **18,641** lines of non-test `.ts`/`.tsx` under `packages/emulator/src` + `apps/web/src`; 30,449 including tests, harness and scripts |
 | Tests | **1227 passing, 1 skipped**, 33 files |
-| Build | 11 files (`apps/web/dist`); JS **416 KB**, **125 KB gzipped**, CSS 17 KB |
-| Save-state format | **version 3.** States written by earlier builds are refused, not misread |
+| Build | 11 files, 540 KB (`apps/web/dist`); JS **434 KB**, **130 KB gzipped**, CSS 17 KB |
+| Save-state format | **version 6.** States written by earlier builds are refused, not misread. It went 3 → 4 → 5 → 6 in three days as four separate serialization holes were closed; see the bug-class note below |
 | Performance | ~20x realtime, p99 well under budget |
 
-Everything green, all re-run 2026-09-19: `npm test`, `typecheck`, `lint` (0 errors, 30 pre-existing
+Everything green, all re-run 2026-09-21: `npm test`, `typecheck`, `lint` (0 errors, 30 pre-existing
 `no-console` warnings in scripts), `prettier --check`, `build`.
 
-> The earlier figure of "16,364 lines excluding tests" is superseded rather than contradicted — it
-> counted a wider set of files. The two numbers above each name their own scope.
+> Line counts in older commit messages used different file sets. The two figures above name their
+> own scope; prefer them.
 
 ### Accuracy corpus — `npm run compat`
 
-Last re-run and confirmed 2026-09-18 — **not** re-run on 2026-09-19, and no core code has
-changed since. These are measurements, not recollections.
+Re-run and confirmed **2026-09-21**, after the GBA BIOS, EEPROM, audio and PPU work. These are
+measurements, not recollections.
 
 | Suite | Result |
 |---|---|
@@ -171,6 +171,39 @@ targets and the safe-area insets are all reasoned, all plausible, and all unobse
 
 ## Recently landed
 
+- **The GBA was not done; it was unmeasured** (`fd2ef25`, `76fa726`, `32d9716`, 2026-09-21). The
+  suite reported "GBA 7/7" while running seven of the nine ROMs in the corpus — `scripts/run-gba-cpu.ts`
+  had a hardcoded list and `stripes.gba` and `bios.gba` sat fetched and never executed. Adding them
+  took the score to 8/9 and then, through four days of fixes, to **10/10** with `shades` added.
+
+  What that exposed, in order of severity:
+
+  - **No GBA game could take an interrupt or call a SWI.** With no BIOS image, `softwareInterrupt`
+    branched to vector 0x08 inside an all-zero array, `noteFetch` was dead code so every protected
+    BIOS read returned 0, and the CPU booted with `FLAG_I` *set* — games enable interrupts through
+    IE/IME and never touch CPSR, which only works because the real BIOS leaves I clear. The BIOS is
+    now implemented natively from GBATEK.
+  - **The harness was not running the machine.** `gbaRunner` drove a bare `Arm7 + GbaMmu` with a
+    stubbed SWI and a hand-toggled DISPSTAT bit, so two of `bios.gba`'s four tests were unreachable
+    by construction. That is why 7/7 looked healthy.
+  - **Undefined ARM instructions never trapped.** `armDecoder` matched single data transfer on a
+    mask that swallows the whole `cond 011 ... 1 ....` space, so `e7f000f0` — the encoding every
+    toolchain emits for a trap — decoded as `LDRB` and carried on. The coprocessor space did trap
+    and then destroyed the machine in two instructions: PC walked into BIOS, the open-bus latch was
+    fetched as an opcode, decoded as `MSR`, and wrote r0 into CPSR.
+  - **EEPROM saves never worked.** Detected, given 8 KB, then treated as plain byte memory, with
+    `0x0D000000` not decoded at all.
+  - **GBA wave RAM was unreachable** and **every PSG register read back wrong** — `NRx4` in the low
+    byte where the write-only frequency byte belongs, `SOUND4CNT_L` reading 0 so a driver would
+    conclude the channel was dead.
+  - **`spriteSize()` rebuilt a nested array-of-arrays on every call**, inside the 128-entry OAM loop
+    and before the off-screen test: ~370,000 allocations per frame, ~22 million per second.
+
+  `stripes.gba` turned out not to be an emulator bug at all: it is a `ppu/` ROM, not a framework
+  one, and the verdict reader was looking for mode-4 text in a mode-0 program. Its reference is
+  derived from the ROM's assembly and GBATEK rather than screenshotted from ourselves, which would
+  have passed by construction.
+
 - **The save states were there; three separate things hid them** (`bf57ee5`). Reported as "why
   can't I see my save states?". Only one of the three causes was the slot count. There were four
   slots and the transport row's Save State button silently overwrote the quick one, so a player
@@ -234,8 +267,8 @@ targets and the safe-area insets are all reasoned, all plausible, and all unobse
   register and any HBlank HDMA in flight. All of them are intercepted in `Mmu.read`/`write`
   and kept in dedicated fields rather than in the `io` array, so `w.bytesOf(this.io)` saved
   none of them — a load restored a CGB game with whatever 128 bytes of colour the previous
-  moment left behind. **Save-state format is now version 3; states written before this are
-  refused, not misread.**
+  moment left behind. **This took the save-state format to version 3** — it has since
+  reached 6; see the State table.
 
   Twelve round-trip tests passed against this the whole time, for two reasons worth
   remembering: every one built a **DMG** cartridge, and they saved and restored at the
@@ -274,12 +307,6 @@ machines did not. When a live report says *broken*, ask what is on screen before
 
 ## Research done, not yet built
 
-**Gamepad remapping.** The pad map is still a hardcoded standard-layout index table, which is a
-latent bug for any controller the browser does not report as `mapping: "standard"` — indices mean
-nothing there and buttons land on the wrong actions. Hot-plug listeners are also missing, so an
-already-connected pad is invisible in Safari and Firefox until a button is pressed. The
-`InputSource` shape is designed to absorb this without churn.
-
 **Multi-line cheat entry**, and a "did this code actually match?" indicator. BGB shows whether a
 Game Genie compare hit, which is the best diagnostic in any cheat UI — without it a code for the
 wrong ROM revision silently does nothing and the emulator looks broken.
@@ -297,18 +324,57 @@ making an unvalidated layout configurable ships the problem to the player instea
    tab that every request is same-origin — that is law 3, and it is meant to be verified
    empirically rather than trusted.
 
-   It has been first on this list for several sessions, and the cost of it staying first is
-   compounding: the last five commits added a drawer, a responsive layout, a fullscreen mode and
-   an eight-slot panel on top of an app nobody has seen. **The list of things to check on that
-   first open is now specific**, which at least makes the session short: the drawer and scrim at
-   375px, the sheet inside fullscreen, the `d98fdee` layout arithmetic against a real window
-   (~420px device at 1152x720; a 693x624 picture in fullscreen), the 44px touch targets, the
-   safe-area insets on a notched phone, and a ten-minute run listening for audio underruns.
-2. **Settle the A/B default** — the last open decision, and it shapes work that is ready to start.
-3. **Mid-scanline PPU effects** — the largest remaining accuracy gap (Mealybug 0/24 plus five
-   Mooneye `ppu/*`), and the one with the most diagnosis already banked. Two wrong hypotheses are
-   eliminated and the method for testing a third is written down.
-4. **Gamepad remapping**, the last obviously-missing input feature, and a latent correctness bug
-   rather than only a gap.
+   It has been first on this list for several sessions and the cost of that is compounding.
+   **Three of phase 15's six gate items and the whole of phases 09 and 10 need a browser**, and no
+   amount of core accuracy work moves any of them. Two days of work have since added a settings
+   drawer, a responsive layout, a fullscreen mode, an eight-slot state panel and a gamepad panel
+   on top of an app nobody has seen.
+
+   **The list of things to check on that first open is specific**, which at least makes the
+   session short: the drawer and scrim at 375px, the sheet inside fullscreen, the `d98fdee` layout
+   arithmetic against a real window (~420px device at 1152x720; a 693x624 picture in fullscreen),
+   the 44px touch targets, the safe-area insets on a notched phone, a real gamepad through the new
+   remapping panel, and a ten-minute run listening for audio underruns.
+2. **Settle the A/B default** — the last open decision, and it now costs more than it did. The
+   same inversion is baked into the gamepad face-button table, and the GBA diamond generalises
+   from it, so keeping `Z → A` means migrating people twice. The silent-upgrade path is designed
+   and written down above.
+3. **Mid-scanline PPU effects** — the largest remaining accuracy gap in the project (Mealybug 0/24
+   plus five Mooneye `ppu/*`), and the one with the most diagnosis already banked. Two hypotheses
+   are eliminated, and the method matters: **measure the pixel diff, never the pass/fail count.**
+   A previous sweep was read off the verdict, concluded the CPU write phase was disproved, and was
+   wrong; the correction is recorded in `docs/plan/phase-04-ppu.md`.
+4. **Bounded, findable things**, if a short session is wanted instead: `halt_bug` times out at
+   2500 frames, and `cgb-acid-hell` is off by exactly 2 pixels at x=80, y=68-69.
 5. **GBA cheats** — unblocked in principle now the licence is MIT, but the `DEADFACE` tables must
-   be reimplemented from GBATEK rather than copied from mGBA.
+   be reimplemented from GBATEK rather than copied from mGBA (MPL-2.0).
+
+Not worth picking up: **Blargg sound 19/24**. Five attempts are recorded in
+`docs/plan/phase-07-audio.md`; the gap is wave-unit *phase* and needs per-cycle modelling, not
+more tuning. Leave it until someone wants that specifically.
+
+---
+
+## The one lesson worth carrying out of this project
+
+**State kept in a subsystem's own objects never reaches the array the container serializes, and
+the round-trip tests do not notice.** It has now happened four times:
+
+| | What was lost | How it showed up |
+|---|---|---|
+| CGB registers | palette RAM, VRAM/WRAM banks, KEY1, HDMA | reported from play as "graphic horror" |
+| GBA APU | all four PSG channels, including wave RAM | silence or noise after every restore |
+| GB APU | the same, one console over | found by audit, not by a test |
+| GBA EEPROM | the whole bit-serial state machine | found by audit, not by a test |
+
+Every time, the existing tests passed, because **they save and restore at the same moment in the
+same core** — a field that was never written to the buffer still holds the right value in memory.
+
+Two rules follow, and they are cheap:
+
+1. When adding or changing any `saveState`, enumerate the class's instance fields and diff them
+   against what the method actually writes. All four of these were found that way in minutes.
+2. A save-state test must **overwrite the state between the save and the load**. Without that step
+   the test passes against the bug. This is not hypothetical — it was demonstrated deliberately:
+   reintroducing the EEPROM bug left the data round-trip test passing while the state-machine
+   tests failed.
