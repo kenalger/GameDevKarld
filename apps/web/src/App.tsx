@@ -80,41 +80,6 @@ export function App(): React.JSX.Element {
         </RomPicker>
       </ErrorBoundary>
 
-      {!loaded && (
-        <div className="empty-state">
-          <strong>Choose a system</strong>
-          <p>
-            The cartridge header says which system it needs, so Auto is right almost always. Pick a
-            system to run a Game Boy Color cartridge in original Game Boy mode, which many support
-            and which looks entirely different.
-          </p>
-          <div className="system-picker" role="radiogroup" aria-label="System">
-            {(
-              [
-                ['auto', 'Auto', 'Read it from the cartridge'],
-                ['GB', 'Game Boy', 'Original and Color'],
-                ['GBA', 'Game Boy Advance', '32-bit, 240×160'],
-              ] as const
-            ).map(([value, title, note]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={snapshot.systemPreference === value}
-                onClick={() => session.setSystemPreference(value)}
-              >
-                <b>{title}</b>
-                <small>{note}</small>
-              </button>
-            ))}
-          </div>
-          <p className="hint">
-            Then load a ROM with the button above. The file is read in your browser and is never
-            sent anywhere.
-          </p>
-        </div>
-      )}
-
       {/* Quick controls only. Everything that is configuration is behind Settings.
 
           The bar used to carry seven controls and was followed by a six-tab strip with
@@ -133,64 +98,71 @@ export function App(): React.JSX.Element {
           feature nobody could find, and nobody can open a browser here to check what a
           hidden bar actually does. A bar that is always there is the safe side of that
           trade. */}
+      {/* With no cartridge in, every one of these is disabled except Settings. A row of
+          six dead buttons is noise, so the bar collapses to the one thing that works. */}
       <div className="controlbar" role="group" aria-label="Emulator controls">
-        <div className="controlbar-group">
-          <button
-            type="button"
-            className="primary"
-            onClick={() => (running ? session.pause() : session.resume())}
-            disabled={!loaded}
-          >
-            {running ? 'Pause' : 'Resume'}
-          </button>
-        </div>
+        {loaded && (
+          <>
+            <div className="controlbar-group">
+              <button
+                type="button"
+                className="primary"
+                onClick={() => (running ? session.pause() : session.resume())}
+                disabled={!loaded}
+              >
+                {running ? 'Pause' : 'Resume'}
+              </button>
+            </div>
 
-        {/* Quick save/load live here rather than only in the panel: a feature you cannot
+            {/* Quick save/load live here rather than only in the panel: a feature you cannot
             find is a feature you do not have. The panel keeps the full slot list. */}
-        <div className="controlbar-group" role="group" aria-label="Save state">
-          <button type="button" onClick={() => void session.quickSave()} disabled={!loaded}>
-            Save State
-          </button>
-          <button
-            type="button"
-            onClick={() => void session.quickLoad()}
-            disabled={!loaded || !snapshot.hasQuickState}
-            title={snapshot.hasQuickState ? 'Load the quick slot' : 'Nothing saved yet'}
-          >
-            Load State
-          </button>
-        </div>
+            <div className="controlbar-group" role="group" aria-label="Save state">
+              <button type="button" onClick={() => void session.quickSave()} disabled={!loaded}>
+                Save State
+              </button>
+              <button
+                type="button"
+                onClick={() => void session.quickLoad()}
+                disabled={!loaded || !snapshot.hasQuickState}
+                title={snapshot.hasQuickState ? 'Load the quick slot' : 'Nothing saved yet'}
+              >
+                Load State
+              </button>
+            </div>
+
+            <div className="controlbar-group">
+              <label className="speed">
+                <span>Speed</span>
+                <select
+                  value={snapshot.speed}
+                  disabled={!loaded}
+                  onChange={(event) => session.setSpeed(Number(event.target.value))}
+                  aria-label="Emulation speed"
+                >
+                  <option value={0.25}>0.25x</option>
+                  <option value={0.5}>0.5x</option>
+                  <option value={1}>1x</option>
+                  <option value={2}>2x</option>
+                  <option value={4}>4x</option>
+                  <option value={8}>8x</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="controlbar-group">
+              <button
+                type="button"
+                onClick={() => {
+                  if (appRef.current) void session.toggleFullscreen(appRef.current);
+                }}
+              >
+                Fullscreen
+              </button>
+            </div>
+          </>
+        )}
 
         <div className="controlbar-group">
-          <label className="speed">
-            <span>Speed</span>
-            <select
-              value={snapshot.speed}
-              disabled={!loaded}
-              onChange={(event) => session.setSpeed(Number(event.target.value))}
-              aria-label="Emulation speed"
-            >
-              <option value={0.25}>0.25x</option>
-              <option value={0.5}>0.5x</option>
-              <option value={1}>1x</option>
-              <option value={2}>2x</option>
-              <option value={4}>4x</option>
-              <option value={8}>8x</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="controlbar-group">
-          <button
-            type="button"
-            disabled={!loaded}
-            onClick={() => {
-              if (appRef.current) void session.toggleFullscreen(appRef.current);
-            }}
-          >
-            Fullscreen
-          </button>
-
           {/* Never disabled. Bindings, the system preference and developer mode are all
               worth reaching before a cartridge is in, and the complaint that started this
               was that there was no way in at all. */}
